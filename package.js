@@ -11,7 +11,8 @@ Package.describe({
 });
 
 Npm.depends({
-  "h5.modbus": "https://github.com/morkai/h5.modbus/archive/0993906e41429a298e91c85dda00ea663c0e9f3e.tar.gz"
+  "h5.modbus": "https://github.com/morkai/h5.modbus/archive/0993906e41429a298e91c85dda00ea663c0e9f3e.tar.gz",
+  "serialport": "1.7.1"
 });
 
 
@@ -19,7 +20,7 @@ Package.onUse(function(api) {
   api.versionsFrom('1.2.0.2');
   api.use(['ecmascript','templating']);
   api.use('aldeed:collection2@2.5.0');
-  //api.use('meteorhacks:npm@1.5.0','server');
+  api.use(['underscore','adriancbo:chalk'],'server');
 
   api.addFiles('models/liveTags.js');
   api.addFiles('models/scanGroups.js');
