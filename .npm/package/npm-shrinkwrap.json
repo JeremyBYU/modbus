@@ -1,0 +1,12 @@
+{
+  "dependencies": {
+    "h5.modbus": {
+      "version": "https://github.com/morkai/h5.modbus/archive/0993906e41429a298e91c85dda00ea663c0e9f3e.tar.gz",
+      "dependencies": {
+        "h5.buffers": {
+          "version": "0.1.1"
+        }
+      }
+    }
+  }
+}

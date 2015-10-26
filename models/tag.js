@@ -3,7 +3,7 @@ This file hold all information for tag configuration.  Alarming should be placed
 
 
 */
-Schemas = {};
+
 Tags = new Meteor.Collection("mmodbus_tags");
 
 Tags.allow({
