@@ -12,7 +12,9 @@ Package.describe({
 
 Npm.depends({
   "h5.modbus": "https://github.com/morkai/h5.modbus/archive/0993906e41429a298e91c85dda00ea663c0e9f3e.tar.gz",
-  "serialport": "1.7.1"
+  "serialport": "1.7.1",
+  "winston": "1.1.1",
+  "winston-mongodb": "1.2.0"
 });
 
 
@@ -22,11 +24,14 @@ Package.onUse(function(api) {
   api.use('aldeed:collection2@2.5.0');
   api.use(['underscore','adriancbo:chalk'],'server');
 
-  api.addFiles('models/liveTags.js');
-  api.addFiles('models/scanGroups.js');
-  api.addFiles('models/tag.js');
-  api.addFiles('modbus.js');
-  api.addFiles('util.js');
+  api.addFiles('lib/models/liveTags.js');
+  api.addFiles('lib/models/scanGroups.js');
+  api.addFiles('lib/models/tag.js');
+  api.addFiles('lib/global.js');
+
+  api.addFiles(['server/logging.js','server/modbus.js'],'server');
+  api.addFiles('client/util.js','client');
+
   api.export('Mmodbus')
 });
 
