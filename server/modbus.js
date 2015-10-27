@@ -62,37 +62,26 @@ Mmodbus = class Mmodbus {
     //Configure Modbus Collections 'Live Tags' & 'Scan Groups'
     self.configureModbusCollections();
 
-    self.startAllScanning();
+    //self.startAllScanning();
     //console.log(masterConfig);
   }
   createEvents(){
     let self = this;
-
-    //Need to make a SYNCHRONOUS version of master.on (which is asynchronous)
-    //Meteor provides this function Meteor.wrapAsync to help
-    let asyncMasterOn = (event, cb) => {
-        self.master.on(event, cb);
-    };
-    let syncMasterOn = Meteor.wrapAsync(asyncMasterOn);
-    syncMasterOn('error', function(err) {
-        self.logger.Mmodbus_error('[master#error] %s', err.message);
-        //stopAllScanning();
+    Utils.syncMasterOn(self,'error', (err) => {
+      self.logger.Mmodbus_error('[master#error] %s', err.message);
+      //stopAllScanning();
     });
-    syncMasterOn('disconnected', function() {
-        self.logger.Mmodbus_warn('[master#disconnected]');
-        //stopAllScanning();
-        //TODO Stop all Timers!
+    Utils.syncMasterOn(self,'disconnected', () => {
+      self.logger.Mmodbus_warn('[master#disconnected]');
+      //stopAllScanning();
+      //TODO Stop all Timers!
     });
-
     //asyncMaster('connected',function(){console.log('test');});
-    syncMasterOn('connected', function() {
-
-        self.logger.Mmodbus_info('[master#connected]');
-        self.logger.Mmodbus_info('Beggining Scanning of Coils');
-        self.startAllScanning();
+    Utils.syncMasterOn(self,'connected', () => {
+      self.logger.Mmodbus_info('[master#connected]');
+      self.logger.Mmodbus_info('Beggining Scanning of Coils');
+      self.startAllScanning();
     });
-
-
   }
   startAllScanning(){
 

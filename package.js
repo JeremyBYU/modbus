@@ -29,7 +29,7 @@ Package.onUse(function(api) {
   api.addFiles('lib/models/tag.js');
   api.addFiles('lib/global.js');
 
-  api.addFiles(['server/logging.js','server/modbus.js'],'server');
+  api.addFiles(['server/logging.js','server/utils.js','server/modbus.js'],'server');
   api.addFiles('client/util.js','client');
 
   api.export('Mmodbus')
