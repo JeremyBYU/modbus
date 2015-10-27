@@ -22,7 +22,8 @@ Mmodbus = class Mmodbus {
     rtu : { serialPort = '/dev/ttyACM0', baudRate= 9600, type= 'serial'} ={},
     ip : { type= 'tcp', host= '127.0.0.1', port= 502, autoConnect= true, autoReconnect= true, minConnectTime= 2500, maxReconnectTime= 5000} = {},
     groupOptions : {coilReadLength = 25,holdingRegisterLength = 25,maxCoilGroups = 5, maxHoldingRegisterGroups = 10}= {},
-    useIP = true
+    useIP = true,
+    scanInterval = 5000
   })
   {
     //Options Object
@@ -34,6 +35,7 @@ Mmodbus = class Mmodbus {
     //Options for MModbus
     this.options.groupOptions = {coilReadLength,holdingRegisterLength,maxCoilGroups,maxHoldingRegisterGroups};
     this.options.useIP = useIP;
+    this.options.scanInterval = scanInterval;
 
     //create logger
     this.logger = Logger;
@@ -41,7 +43,8 @@ Mmodbus = class Mmodbus {
     this.collections = {LiveTags: LiveTags,ScanGrups: ScanGroups,Tags: Tags};
     //console.log(this.options);
     //console.log(this.options.scanOptions);
-
+    //placeholder for the Meteor Timers
+    this.modbus_timer = null;
     this.initialize();
   }
   /**
@@ -59,7 +62,7 @@ Mmodbus = class Mmodbus {
     //Configure Modbus Collections 'Live Tags' & 'Scan Groups'
     self.configureModbusCollections();
 
-    //self.startAllScanning();
+    self.startAllScanning();
     //console.log(masterConfig);
   }
   createEvents(){
@@ -110,11 +113,10 @@ Mmodbus = class Mmodbus {
 
     //Clear the Scan Group Collection
     self.resetScanGroups();
+
     self.configureModbusCoilCollections();
+    self.configureModbusHoldingRegisterCollections();
 
-
-    //TODO  Read_HR.remove({});
-    //configureModbusHoldingRegisterCollections();
   }
   configureLiveTagCollection() {
     //return array of all Tags
@@ -140,13 +142,13 @@ Mmodbus = class Mmodbus {
         });
     });
   }
-    /**
-     * This wil create the Scan Group Collections from the Tags collection which have coils
-     * The logic finds the tag with the lowest number address.  It then groups
-     * all coils that are in range of the lower address and *lower address + option (default 25)*
-     * It then adds this group of tags as a Scan Group and the leftover tags continue
-     * to make more Scan Groups following the same logic
-    */
+/**
+ * This wil create the Scan Group Collections from the Tags collection which have coils
+ * The logic finds the tag with the lowest number address.  It then groups
+ * all coils that are in range of the lower address and *lower address + option (default 25)*
+ * It then adds this group of tags as a Scan Group and the leftover tags continue
+ * to make more Scan Groups following the same logic
+*/
   configureModbusCoilCollections() {
     //Get a list of all coils (neeed address, tag_id, tag_param)
     let allCoils = Tags.find({
@@ -174,31 +176,87 @@ Mmodbus = class Mmodbus {
       });
     });
     //create Scan Groups here
-    for (i = 0; i < this.options.groupOptions.maxCoilGroups && cleanCoils.length > 0; i++) {
-      var low_tag = _.min(cleanCoils, function(tag) {
-        //console.log(cleanCoils.address);
+    this.createScanGroup(cleanCoils,this.options.groupOptions.maxCoilGroups,this.options.groupOptions.coilReadLength,"Coil")
+
+  }
+  configureModbusHoldingRegisterCollections(){
+    //make two Scan Groups, one that hold integers and one that holds floating points.
+    //Get a list of all Holding Registers (neeed address, tag_id, tag_param)
+    let allHoldingRegisters = Tags.find({
+        "params.table": "Holding Register"
+    }, {
+        fields: {
+            'tag': 1,
+            'params': 1
+        }
+    }).fetch();
+
+    //New array just containg the Integers and their addesses
+    let cleanIntegers = new Array();
+    //New array just containing the Floating Points and their addresses.
+    let cleanFloats = new Array();
+    _.each(allHoldingRegisters, (tag) => {
+      //console.log(tag);
+      _.each(tag.params, function(param) {
+        if (param.table == "Holding Register") {
+          //Maybe separate floating and integer
+          let tag_param = tag.tag + '_' + param.name;
+          let new_number = {
+            tagid: tag._id,
+            tag_param: tag_param,
+            address: param.address
+          };
+          if(param.dataType == "Integer"){
+            cleanIntegers.push(new_number);
+          }
+          else if(param.dataType == "Floating Point") {
+            cleanFloats.push(new_number);
+          }
+        }
+
+      });
+    });
+    //create Scan Groups here
+    this.createScanGroup(cleanIntegers,this.options.groupOptions.maxHoldingRegisterGroups,this.options.groupOptions.holdingRegisterLength,"Integer");
+    this.createScanGroup(cleanFloats,this.options.groupOptions.maxHoldingRegisterGroups,this.options.groupOptions.holdingRegisterLength,"Floating Point");
+  }
+
+  /**
+   * The logic finds the tag with the lowest number address.  It then groups
+   * all items that are in range of the lower address and *lower address + option (default 25)*
+   * It then adds this group of items as a Scan Group and the leftover items continue
+   * to make more Scan Groups following the same logic
+   * @param {array} items - List of Tag_Params to add to scan group
+   * @param {Number} maxGroups - The maximum number of scanGroups you will allow to be created
+   * @param {Number} maxReadLength - The maximum range of a ScanGroup
+   * @param {Number} table - Table name for the Scan Group
+  */
+  createScanGroup(items,maxGroups,maxReadLength,table){
+    for (i = 0; i < maxGroups && items.length > 0; i++) {
+      let low_tag = _.min(items, (tag) => {
+        //console.log(tag.address);
         return tag.address;
       });
 
-      var low_address = low_tag.address; //Get the lowest address of all the coils
-      var next_range = low_address + this.options.groupOptions.coilReadLength; //create an upper range from the config parameter (default +25)
+      let low_address = low_tag.address; //Get the lowest address of all the coils
+      let next_range = low_address + maxReadLength; //create an upper range from the config parameter (default +25)
       //console.log('next Range' + next_range);
 
       //Group the coils within the range (true Group) and those without the range (false Group).
       //add the true Group to the ScanGroups table
-      //remove the trueGroup from the cleanCoils list
-      var group = _.groupBy(cleanCoils, (tag) => {
+      //remove the trueGroup from the items list
+      let group = _.groupBy(items, (tag) => {
         //console.log(tag.address);
         return tag.address <= next_range;
       });
       trueGroup = group.true;
-      cleanCoils = group.false || [];
+      items = group.false || [];
       //console.log('Less Than ',trueGroup);
-      //console.log('Not less than',cleanCoils);
+      //console.log('Not less than',items);
       //create ScanGroups document containing the tags within the address range.
       ScanGroups.insert({
         groupNum: i,
-        table: "Coil",
+        table: table,
         startAddress: low_address,
         endAddress: next_range,
         tags: trueGroup,
@@ -207,18 +265,37 @@ Mmodbus = class Mmodbus {
       });
     }
   }
+  startAllScanning() {
+    if (this.modbus_timer == null) {
+      console.log('Creating Coil Timer');
+      this.modbus_timer = Meteor.setInterval(this.scanAllGroups, this.options.scanInterval);
+    } else {
+      console.log('Timer already exists..');
+    }
+  }
+  scanAllGroups() {
+    console.log('Begin Scanning Groups');
 
-  /**
-   *
-   *
-   *
-   *
-   *
-   *
-   *
-   *
-  *
-  */
+    var scanGroups = ScanGroups.find({
+      "active": true
+    }).fetch();
+    console.log('scanGroups Array:', scanGroups);
+    _.each(scanGroups, function(myGroup) {
+      switch (myGroup.table) {
+        case "Coil":
+          //scanCoilGroup(myGroup);
+          break;
+        case "Integer":
+          //scanIntegerGroup(myGroup);
+          break;
+        case "Floating Point":
+          break;
+        default:
+          console.log("ScanGroup ID: " + myGroup.groupNum + " has incorrect table Name");
+      }
+    });
+    //console.log('After each statement');
+  };
   createMasterConfiguration(){
     let transport = {}; //transport object for modbus connections
     //Will be creating a TCP IP Connection for transport object
