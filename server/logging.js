@@ -14,7 +14,7 @@ let myCustomLevels = {
   }
 };
 let mongoOptions = {
-  handleExceptions: true,
+  handleExceptions: false,
   level: 'Mmodbus_info',
   levels: myCustomLevels.levels,
   colors: myCustomLevels.colors,
