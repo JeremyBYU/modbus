@@ -167,14 +167,12 @@ Mmodbus = class Mmodbus {
             'params': 1
         }
     }).fetch();
-
     //New array just containg the Integers and their addesses
     let cleanIntegers = new Array();
     //New array just containing the Floating Points and their addresses.
     let cleanFloats = new Array();
     _.each(allHoldingRegisters, (tag) => {
-      //console.log(tag);
-      _.each(tag.params, function(param) {
+      _.each(tag.params, (param) => {
         if (param.table == "Holding Register") {
           //Maybe separate floating and integer
           let tag_param = tag.tag + '_' + param.name;
@@ -190,11 +188,9 @@ Mmodbus = class Mmodbus {
             cleanFloats.push(new_number);
           }
         }
-
       });
     });
     //create Scan Groups here
-
     Utils.assignScanGroup(cleanIntegers,this.options.groupOptions.holdingRegisterLength,"Integer");
     Utils.assignScanGroup(cleanFloats,this.options.groupOptions.holdingRegisterLength,"Floating Point");
     //Utils.createScanGroup(cleanIntegers,this.options.groupOptions.maxHoldingRegisterGroups,this.options.groupOptions.holdingRegisterLength,"Integer");
@@ -225,10 +221,10 @@ Mmodbus = class Mmodbus {
   scanGroup(scanGroup) {
     let self = this;
     //console.log(scanGroup);
-    this.logger.Mmodbus_debug("Scanning Group # ", scanGroup.table + ';' + scanGroup.groupNum);
+    this.logger.Mmodbus_debug("Scanning Group # " +scanGroup.groupNum + ' of table ' + scanGroup.table);
     let address = scanGroup.startAddress;
-    let quantity = scanGroup.tags.length;
-    this.logger.Mmodbus_debug("Address and length " + address + '  ' + quantity);
+    let quantity = scanGroup.quantity;
+    this.logger.Mmodbus_debug("Address " + address + ' and length ' + quantity);
     transaction = {};
     switch (scanGroup.table) {
       case "Coil":
@@ -246,63 +242,15 @@ Mmodbus = class Mmodbus {
         self.logger.Mmodbus_warn("ScanGroup ID: " + myGroup.groupNum + " has incorrect table Name");
     }
 
-    Utils.SyncTransactionOn(transaction,'timeout', function() {
+    Utils.syncTransactionOn(transaction,'timeout', function() {
       this.logger.Mmodbus_info('[transaction#timeout] Scan Group #:', scanGroup.groupNum);
     });
     //TODO What should I really do on error here?
-    Utils.SyncTransactionOn(transaction,'error', function(err) {
+    Utils.syncTransactionOn(transaction,'error', function(err) {
       self.logger.Mmodbus_error('[transaction#error] Scan Group #: ' + scanGroup.groupNum + '.  Err Msg: ' + err.message);
       //stopAllScanning();
     });
-    Utils.SyncTransactionOn(transaction,'complete', function(err, response) {
-      //if an error occurs, could be a timeout
-      if (err) {
-        self.logger.Mmodbus_warn('Error Message on Complete w/ ScanGroup #:', scanGroup.groupNum)
-        self.logger.Mmodbus_warn(err.message);
-
-      } else
-      if (response.isException()) {
-        self.logger.Mmodbus_error('Got an Exception Message. Scan Group #:', scanGroup.groupNum)
-        self.logger.Mmodbus_error(response.toString());
-        self.reportModbusError(scanGroup);
-      } else {
-        self.logger.Mmodbus_debug('Succesfully completed scanning of Scan Group #:', scanGroup.groupNum);
-        //update LiveTags from the response and scanGroup
-        self.handleRespone(response,scanGroup);
-      }
-    });
-
-    //self.readGroup(address, quantity, scanGroup);
-    //console.log('scan Group response ', coil_response);
-    this.logger.Mmodbus_debug('after read scanGroup', scanGroup.table + ';' + scanGroup.groupNum);
-  }
-  readGroup(coil_address, quantity, scanGroup){
-    let self = this;
-    transaction = {};
-    switch (scanGroup.table) {
-      case "Coil":
-        transaction = self.master.readCoils(coil_address, quantity);
-        transaction.setMaxRetries(0);
-        break;
-      case "Integer":
-
-        break;
-      case "Floating Point":
-
-        break;
-      default:
-        self.logger.Mmodbus_warn("ScanGroup ID: " + myGroup.groupNum + " has incorrect table Name");
-    }
-
-    Utils.SyncTransactionOn(transaction,'timeout', function() {
-      this.logger.Mmodbus_info('[transaction#timeout] Scan Group #:', scanGroup.groupNum);
-    });
-    //TODO What should I really do on error here?
-    Utils.SyncTransactionOn(transaction,'error', function(err) {
-      self.logger.Mmodbus_error('[transaction#error] Scan Group #: ' + scanGroup.groupNum + '.  Err Msg: ' + err.message);
-      //stopAllScanning();
-    });
-    Utils.SyncTransactionOn(transaction,'complete', function(err, response) {
+    Utils.syncTransactionOn(transaction,'complete', function(err, response) {
       //if an error occurs, could be a timeout
       if (err) {
         self.logger.Mmodbus_warn('Error Message on Complete w/ ScanGroup #:', scanGroup.groupNum)
@@ -326,14 +274,15 @@ Mmodbus = class Mmodbus {
     let data;
 
     data = (scanGroup.table == "Coil") ? response.getStates().map(Number) : response.getValues();
-    self.logger.Mmodbus_debug('Scan Group Data for Group#:', scanGroup.groupNum);
-    console.log(data);
+    //self.logger.Mmodbus_debug('Scan Group Data for Group#:', scanGroup.table,scanGroup.groupNum);
+    //console.log(data);
+    //self.logger.Mmodbus_debug('test', data);
     _.each(scanGroup.tags, (tag)=> {
       var index = tag.address - scanGroup.startAddress;
       var tagName = tag.tag_param;
       var newValue = (scanGroup.table == "Coil") ? data[index] : self.readTypedValue(scanGroup.table,scanGroup.startAddress,tag,data);
-      console.log('Returned new Value: ',newValue);
-      self.logger.Mmodbus_debug('Updating Tag ' + tagName + ' to value of ' + newValue);
+      //console.log('Returned new Value: ',newValue);
+      self.logger.Mmodbus_debug('Updating Tag ' + tagName + ' at address ' + tag.address + ' to value of ' + newValue);
       LiveTags.update({tag_param: tagName}, {$set: {value: newValue,quality: true}});
     });
 
@@ -352,30 +301,11 @@ Mmodbus = class Mmodbus {
     ScanGroups.update({_id: scanGroup._id}, {$inc: {errorCount: 1}});
 
   }
-  updateLiveTags(data, scanGroup) {
-    let self = this;
-    let startAddress = scanGroup.startAddress;
-    if (scanGroup.table == 'Coil'){
-    _.each(scanGroup.tags, (tag)=> {
-      var index = tag.address - startAddress;
-      //console.log('tag.address: '+ tag.address + ' . startArddress: ' + startAddress);
-      var tagName = tag.tag_param;
-      var newValue = data[index];
-      self.logger.Mmodbus_debug('Updating Tag ' + tagName + ' to value of ' + newValue);
-      LiveTags.update({tag_param: tagName}, {$set: {value: newValue,quality: true}});
-    });
-    }
-    else{
-
-
-    }
-  }
   readTypedValue(table,startingAddress, tag, buffer) {
     let offset = (tag.address - startingAddress) * 2;
-    console.log("reading Tag.param",tag.tag_param);
-    console.log("Offset = ", offset)
-    switch (table)
-    {
+    //self.logger.Mmodbus_debug("reading Tag.param",tag.tag_param);
+    //self.logger.Mmodbus_debug("Offset = ", offset)
+    switch (table){
       case 'double':
         return buffer.readDoubleBE(offset, true);
 

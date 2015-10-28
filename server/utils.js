@@ -29,7 +29,7 @@ let syncMasterOn = Meteor.wrapAsync(asyncMasterOn);
 let AsyncTransactionOn = (transaction, event, cb) => {
     transaction.on(event, cb)
 };
-let SyncTransactionOn = Meteor.wrapAsync(AsyncTransactionOn);
+let syncTransactionOn = Meteor.wrapAsync(AsyncTransactionOn);
 
 
 let createMasterConfiguration = (self) => {
@@ -147,6 +147,6 @@ Utils = {
   syncMasterOn: syncMasterOn,
   assignScanGroup: assignScanGroup,
   createMasterConfiguration: createMasterConfiguration,
-  SyncTransactionOn: SyncTransactionOn
+  syncTransactionOn: syncTransactionOn
 
 };
