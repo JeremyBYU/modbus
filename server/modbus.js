@@ -1,8 +1,7 @@
 
 //Required NPM Modules
 let modbus = Npm.require('h5.modbus');
-let serialPort = Npm.require('serialPort');
-let net = Npm.require('net');
+
 
 
 
@@ -52,7 +51,7 @@ Mmodbus = class Mmodbus {
   */
   initialize(){
     self = this;
-    let masterConfig = self.createMasterConfiguration();
+    let masterConfig = Utils.createMasterConfiguration(self);
     //console.log(masterConfig);
     self.master = modbus.createMaster(masterConfig);
 
@@ -82,11 +81,6 @@ Mmodbus = class Mmodbus {
       self.logger.Mmodbus_info('Beggining Scanning of Coils');
       self.startAllScanning();
     });
-  }
-  startAllScanning(){
-
-
-
   }
   resetLiveTags(){
     LiveTags.remove({});
@@ -133,10 +127,6 @@ Mmodbus = class Mmodbus {
   }
 /**
  * This wil create the Scan Group Collections from the Tags collection which have coils
- * The logic finds the tag with the lowest number address.  It then groups
- * all coils that are in range of the lower address and *lower address + option (default 25)*
- * It then adds this group of tags as a Scan Group and the leftover tags continue
- * to make more Scan Groups following the same logic
 */
   configureModbusCoilCollections() {
     //Get a list of all coils (neeed address, tag_id, tag_param)
@@ -165,7 +155,7 @@ Mmodbus = class Mmodbus {
       });
     });
     //create Scan Groups here
-    this.createScanGroup(cleanCoils,this.options.groupOptions.maxCoilGroups,this.options.groupOptions.coilReadLength,"Coil")
+    Utils.createScanGroup(cleanCoils,this.options.groupOptions.maxCoilGroups,this.options.groupOptions.coilReadLength,"Coil")
 
   }
   configureModbusHoldingRegisterCollections(){
@@ -206,73 +196,30 @@ Mmodbus = class Mmodbus {
       });
     });
     //create Scan Groups here
-    this.createScanGroup(cleanIntegers,this.options.groupOptions.maxHoldingRegisterGroups,this.options.groupOptions.holdingRegisterLength,"Integer");
-    this.createScanGroup(cleanFloats,this.options.groupOptions.maxHoldingRegisterGroups,this.options.groupOptions.holdingRegisterLength,"Floating Point");
+    Utils.createScanGroup(cleanIntegers,this.options.groupOptions.maxHoldingRegisterGroups,this.options.groupOptions.holdingRegisterLength,"Integer");
+    Utils.createScanGroup(cleanFloats,this.options.groupOptions.maxHoldingRegisterGroups,this.options.groupOptions.holdingRegisterLength,"Floating Point");
   }
 
-  /**
-   * The logic finds the tag with the lowest number address.  It then groups
-   * all items that are in range of the lower address and *lower address + option (default 25)*
-   * It then adds this group of items as a Scan Group and the leftover items continue
-   * to make more Scan Groups following the same logic
-   * @param {array} items - List of Tag_Params to add to scan group
-   * @param {Number} maxGroups - The maximum number of scanGroups you will allow to be created
-   * @param {Number} maxReadLength - The maximum range of a ScanGroup
-   * @param {Number} table - Table name for the Scan Group
-  */
-  createScanGroup(items,maxGroups,maxReadLength,table){
-    for (i = 0; i < maxGroups && items.length > 0; i++) {
-      let low_tag = _.min(items, (tag) => {
-        //console.log(tag.address);
-        return tag.address;
-      });
-
-      let low_address = low_tag.address; //Get the lowest address of all the coils
-      let next_range = low_address + maxReadLength; //create an upper range from the config parameter (default +25)
-      //console.log('next Range' + next_range);
-
-      //Group the coils within the range (true Group) and those without the range (false Group).
-      //add the true Group to the ScanGroups table
-      //remove the trueGroup from the items list
-      let group = _.groupBy(items, (tag) => {
-        //console.log(tag.address);
-        return tag.address <= next_range;
-      });
-      trueGroup = group.true;
-      items = group.false || [];
-      //console.log('Less Than ',trueGroup);
-      //console.log('Not less than',items);
-      //create ScanGroups document containing the tags within the address range.
-      ScanGroups.insert({
-        groupNum: i,
-        table: table,
-        startAddress: low_address,
-        endAddress: next_range,
-        tags: trueGroup,
-        active: true,
-        errorCount: 0
-      });
-    }
-  }
   startAllScanning() {
     if (this.modbus_timer == null) {
-      console.log('Creating Coil Timer');
-      this.modbus_timer = Meteor.setInterval(this.scanAllGroups, this.options.scanInterval);
+      this.logger.Mmodbus_warn('Creating Scan timer for scan groups');
+      this.modbus_timer = Meteor.setInterval(this.scanAllGroups.bind(this), this.options.scanInterval);
     } else {
-      console.log('Timer already exists..');
+      this.logger.Mmodbus_warn('Timer already exists for scan groups');
     }
   }
   scanAllGroups() {
-    console.log('Begin Scanning Groups');
+    let self = this;
+    self.logger.Mmodbus_debug('Begin Scanning All Groups');
 
     var scanGroups = ScanGroups.find({
       "active": true
     }).fetch();
-    console.log('scanGroups Array:', scanGroups);
+    self.logger.Mmodbus_debug('scanGroups Array:', scanGroups);
     _.each(scanGroups, function(myGroup) {
       switch (myGroup.table) {
         case "Coil":
-          //scanCoilGroup(myGroup);
+          self.scanCoilGroup(myGroup);
           break;
         case "Integer":
           //scanIntegerGroup(myGroup);
@@ -280,43 +227,84 @@ Mmodbus = class Mmodbus {
         case "Floating Point":
           break;
         default:
-          console.log("ScanGroup ID: " + myGroup.groupNum + " has incorrect table Name");
+          self.logger.Mmodbus_warn("ScanGroup ID: " + myGroup.groupNum + " has incorrect table Name");
       }
     });
     //console.log('After each statement');
-  };
-  createMasterConfiguration(){
-    let transport = {}; //transport object for modbus connections
-    //Will be creating a TCP IP Connection for transport object
-    if(this.options.useIP){
-      let socket = new net.Socket();
-      transport.type = 'ip';
-      transport.eofTimeout = 10;
-      transport.connection = _.extend({},this.options.ip,{socket: socket});
-      //console.log(transport);
-
-    }//Will be creating a serial connection for transport object.
-    else {
-      let serialPort = new SerialPort(this.options.rtu.serialPort, {
-        baudRate: this.options.rtu.baudRate
-      });
-      transport.type = 'rtu',
-      transport.eofTimeout = 10;
-      transport.connection = { type: this.options.rtu.type, serialPort: serialPort}
-    }
-    let masterConfig = _.extend({},this.options.scanOptions,{transport:transport});
-    return masterConfig;
   }
-  /**
-   * Provides a wrapper function for the Asynchronous function "on" of modbus object
-   *
-   * @param {String} event
-   *
-   * @param {Function} cb
-   *
-   * @returns {Void} Simply executes the callback on the provided event
-   */
+  scanCoilGroup(scanGroup) {
+    let self = this;
+    //console.log(scanGroup);
+    this.logger.Mmodbus_debug("Scanning Group # ", scanGroup.groupNum);
+    var address = scanGroup.startAddress;
+    var quantity = scanGroup.endAddress - address;
+    this.logger.Mmodbus_debug("Address and length " + address + '  ' + quantity);
+    coil_response = self.readCoils(address, quantity, scanGroup);
+    //console.log('scan Group response ', coil_response);
+    this.logger.Mmodbus_debug('after read coil of Group', scanGroup.groupNum);
+  }
+  readCoils(coil_address, quantity, scanGroup){
+    let self = this;
+    //Neccessary Evil for Asychronous Transaction!
+    transaction = self.master.readCoils(coil_address, quantity);
+    transaction.setMaxRetries(0);
 
+    Utils.SyncTransactionOn(transaction,'timeout', function() {
+      this.logger.Mmodbus_info('[transaction#timeout] Scan Group #:', scanGroup.groupNum);
+    });
+    //TODO What should I really do on error here?
+    Utils.SyncTransactionOn(transaction,'error', function(err) {
+      self.logger.Mmodbus_error('[transaction#error] Scan Group #: ' + scanGroup.groupNum + '.  Err Msg: ' + err.message);
+      //stopAllScanning();
+    });
+    Utils.SyncTransactionOn(transaction,'complete', function(err, response) {
+      //if an error occurs, could be a timeout
+      if (err) {
+        self.logger.Mmodbus_warn('Error Message on Complete w/ ScanGroup #:', scanGroup.groupNum)
+        self.logger.Mmodbus_warn(err.message);
+
+      } else
+      if (response.isException()) {
+        self.logger.Mmodbus_error('Got an Exception Message. Scan Group #:', scanGroup.groupNum)
+        self.logger.Mmodbus_error(response.toString());
+        //reportModbusError(scanGroup);
+      } else {
+        var coils;
+        self.logger.Mmodbus_debug('Succesfully completed scanning of Scan Group #:', scanGroup.groupNum);
+        //update LiveTags from the response and scanGroup
+        coils = response.getStates().map(Number);
+        console.log('Response: ' + coils);
+        //updateLiveTags(coils, scanGroup);
+        //console.log(response.getStates().map(Number));
+        return coils;
+      }
+    });
+  }
+  reportModbusError(scanGroup) {
+    var errors = ScanGroups.find({
+        'groupNum': scanGroup.groupNum
+    }).fetch()[0].errorCount;
+    errors = errors + 1;
+    console.log('Scan Group #' + scanGroup.groupNum + ' is reporting an error. They currently have ' + errors + ' errors');
+    if (errors > connection.options.defaultMaxRetries) {
+        console.log('Exceeded Max Retries, disabling group #', scanGroup.groupNum);
+        ScanGroups.update({
+            groupNum: scanGroup.groupNum
+        }, {
+            $set: {
+                active: false
+            }
+        });
+    }
+    ScanGroups.update({
+        groupNum: scanGroup.groupNum
+    }, {
+        $inc: {
+            errorCount: 1
+        }
+    });
+
+  }
 
 
 }

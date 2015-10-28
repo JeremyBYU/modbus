@@ -1,5 +1,5 @@
 Package.describe({
-  name: 'jeremybyu:modbus',
+  name: 'jeremybyu:mmodbus',
   version: '0.0.1',
   // Brief, one-line summary of the package.
   summary: 'Adds a Modbus Client which queries a slave and stores information in MongoDB',
