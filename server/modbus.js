@@ -2,9 +2,6 @@
 //Required NPM Modules
 let modbus = Npm.require('h5.modbus');
 
-
-
-
 //This is our globally exported object from this package
 Mmodbus = class Mmodbus {
   /**
@@ -274,7 +271,7 @@ Mmodbus = class Mmodbus {
         //update LiveTags from the response and scanGroup
         coils = response.getStates().map(Number);
         console.log('Response: ' + coils);
-        //updateLiveTags(coils, scanGroup);
+        self.updateLiveTags(coils, scanGroup);
         //console.log(response.getStates().map(Number));
         return coils;
       }
@@ -282,7 +279,7 @@ Mmodbus = class Mmodbus {
   }
   reportModbusError(scanGroup) {
     let self = this;
-    var errors = ScanGroups.find({
+    let errors = ScanGroups.find({
        _id: scanGroup._id
     }).fetch()[0].errorCount;
     errors = errors + 1;
@@ -293,6 +290,18 @@ Mmodbus = class Mmodbus {
     }
     ScanGroups.update({_id: scanGroup._id}, {$inc: {errorCount: 1}});
 
+  }
+  updateLiveTags(data, scanGroup) {
+    let self = this;
+    let startAddress = scanGroup.startAddress;
+    _.each(scanGroup.tags, (tag)=> {
+      var index = tag.address - startAddress;
+      //console.log('tag.address: '+ tag.address + ' . startArddress: ' + startAddress);
+      var tagName = tag.tag_param;
+      var newValue = data[index];
+      self.logger.Mmodbus_debug('Updating Tag ' + tagName + ' to value of ' + newValue);
+      LiveTags.update({tag_param: tagName}, {$set: {value: newValue,quality: true}});
+    });
   }
 
 
