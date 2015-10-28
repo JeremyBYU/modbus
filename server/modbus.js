@@ -267,7 +267,7 @@ Mmodbus = class Mmodbus {
       if (response.isException()) {
         self.logger.Mmodbus_error('Got an Exception Message. Scan Group #:', scanGroup.groupNum)
         self.logger.Mmodbus_error(response.toString());
-        //reportModbusError(scanGroup);
+        self.reportModbusError(scanGroup);
       } else {
         var coils;
         self.logger.Mmodbus_debug('Succesfully completed scanning of Scan Group #:', scanGroup.groupNum);
@@ -281,28 +281,17 @@ Mmodbus = class Mmodbus {
     });
   }
   reportModbusError(scanGroup) {
+    let self = this;
     var errors = ScanGroups.find({
-        'groupNum': scanGroup.groupNum
+       _id: scanGroup._id
     }).fetch()[0].errorCount;
     errors = errors + 1;
-    console.log('Scan Group #' + scanGroup.groupNum + ' is reporting an error. They currently have ' + errors + ' errors');
-    if (errors > connection.options.defaultMaxRetries) {
-        console.log('Exceeded Max Retries, disabling group #', scanGroup.groupNum);
-        ScanGroups.update({
-            groupNum: scanGroup.groupNum
-        }, {
-            $set: {
-                active: false
-            }
-        });
+    self.logger.Mmodbus_warn('Scan Group #' + scanGroup.groupNum + ' is reporting an error. They currently have ' + errors + ' errors');
+    if (errors > self.options.scanOptions.defaultMaxRetries) {
+      self.logger.Mmodbus_warn('Exceeded Max Retries, disabling group #', scanGroup.groupNum);
+      ScanGroups.update({_id: scanGroup._id}, {$set: {active: false}});
     }
-    ScanGroups.update({
-        groupNum: scanGroup.groupNum
-    }, {
-        $inc: {
-            errorCount: 1
-        }
-    });
+    ScanGroups.update({_id: scanGroup._id}, {$inc: {errorCount: 1}});
 
   }
 
