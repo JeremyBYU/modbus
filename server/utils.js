@@ -56,6 +56,17 @@ let createMasterConfiguration = (self) => {
   return masterConfig;
 }
 
+let getRegisterQuantityFromType = (table) =>{
+  switch (table)
+  {
+    case 'Floating Point':
+    case 'Integer':
+      return 2;
+    default:
+      return 1;
+  }
+}
+
 /**
  * The logic finds the tag with the lowest number address.  It then groups
  * all items that are in range of the lower address and *lower address + option (default 25)*
@@ -66,43 +77,75 @@ let createMasterConfiguration = (self) => {
  * @param {Number} maxReadLength - The maximum range of a ScanGroup
  * @param {Number} table - Table name for the Scan Group
 */
-let createScanGroup = (items,maxGroups,maxReadLength,table) => {
-  for (i = 0; i < maxGroups && items.length > 0; i++) {
-    let low_tag = _.min(items, (tag) => {
-      //console.log(tag.address);
-      return tag.address;
-    });
+let assignScanGroup = (items,maxReadLength,table) => {
+  let scanGroups = new Array();
+  let scanGroup;
+  let lastAddress;
 
-    let low_address = low_tag.address; //Get the lowest address of all the coils
-    let next_range = low_address + maxReadLength; //create an upper range from the config parameter (default +25)
-    //console.log('next Range' + next_range);
+  //console.log(JSON.stringify(scanGroups));
+  let lastTagIndex = items.length - 1;
 
-    //Group the coils within the range (true Group) and those without the range (false Group).
-    //add the true Group to the ScanGroups table
-    //remove the trueGroup from the items list
-    let group = _.groupBy(items, (tag) => {
-      //console.log(tag.address);
-      return tag.address <= next_range;
-    });
-    trueGroup = group.true;
-    items = group.false || [];
-    //console.log('Less Than ',trueGroup);
-    //console.log('Not less than',items);
-    //create ScanGroups document containing the tags within the address range.
-    ScanGroups.insert({
-      groupNum: i,
+  let adjustQuantity = (scanGroup, i) =>
+  {
+    if (i === lastTagIndex)
+    {
+      scanGroup.quantity += getRegisterQuantityFromType(table) - 1;
+    }
+  }
+  let createNewScanGroup = (groupNum,table,startAddress) =>{
+    return{
+      groupNum: groupNum,
       table: table,
-      startAddress: low_address,
-      endAddress: next_range,
-      tags: trueGroup,
+      startAddress: startAddress,
+      quantity: 1,
+      tags: new Array(),
       active: true,
       errorCount: 0
-    });
+    }
   }
-};
+  items.sort((a, b) =>{
+    return a.address - b.address;
+  });
+
+  items.forEach((tag, i) => {
+    if (i === 0){
+      scanGroup = createNewScanGroup(0,table,tag.address);
+      lastAddress = tag.address;
+      scanGroup.tags.push(tag);
+      adjustQuantity(scanGroup, i);
+      scanGroups.push(scanGroup);
+      return;
+    }
+    let diff = tag.address - lastAddress;
+    if (scanGroup.quantity + diff > maxReadLength){
+      scanGroup.quantity += getRegisterQuantityFromType(table) - 1;
+
+      scanGroup = createNewScanGroup(scanGroups.length,table,tag.address);
+      lastAddress = tag.address;
+      scanGroup.tags.push(tag);
+      adjustQuantity(scanGroup, i);
+      scanGroups.push(scanGroup);
+      //console.log(JSON.stringify(scanGroups));
+      return;
+    }
+    scanGroup.quantity += diff;
+    adjustQuantity(scanGroup, i);
+    scanGroup.tags.push(tag);
+    lastAddress = tag.address;
+    //console.log(JSON.stringify(scanGroups));
+  });
+  //console.log(JSON.stringify(scanGroups));
+  _.each(scanGroups, (scanGroup) =>{
+    ScanGroups.insert(scanGroup);
+  });
+
+}
+
+
+
 Utils = {
   syncMasterOn: syncMasterOn,
-  createScanGroup: createScanGroup,
+  assignScanGroup: assignScanGroup,
   createMasterConfiguration: createMasterConfiguration,
   SyncTransactionOn: SyncTransactionOn
 

@@ -152,7 +152,8 @@ Mmodbus = class Mmodbus {
       });
     });
     //create Scan Groups here
-    Utils.createScanGroup(cleanCoils,this.options.groupOptions.maxCoilGroups,this.options.groupOptions.coilReadLength,"Coil")
+    Utils.assignScanGroup(cleanCoils,this.options.groupOptions.coilReadLength,"Coil");
+    //Utils.createScanGroup(cleanCoils,this.options.groupOptions.maxCoilGroups,this.options.groupOptions.coilReadLength,"Coil")
 
   }
   configureModbusHoldingRegisterCollections(){
@@ -193,8 +194,11 @@ Mmodbus = class Mmodbus {
       });
     });
     //create Scan Groups here
-    Utils.createScanGroup(cleanIntegers,this.options.groupOptions.maxHoldingRegisterGroups,this.options.groupOptions.holdingRegisterLength,"Integer");
-    Utils.createScanGroup(cleanFloats,this.options.groupOptions.maxHoldingRegisterGroups,this.options.groupOptions.holdingRegisterLength,"Floating Point");
+
+    Utils.assignScanGroup(cleanIntegers,this.options.groupOptions.holdingRegisterLength,"Integer");
+    Utils.assignScanGroup(cleanFloats,this.options.groupOptions.holdingRegisterLength,"Floating Point");
+    //Utils.createScanGroup(cleanIntegers,this.options.groupOptions.maxHoldingRegisterGroups,this.options.groupOptions.holdingRegisterLength,"Integer");
+    //Utils.createScanGroup(cleanFloats,this.options.groupOptions.maxHoldingRegisterGroups,this.options.groupOptions.holdingRegisterLength,"Floating Point");
   }
 
   startAllScanning() {
@@ -214,37 +218,33 @@ Mmodbus = class Mmodbus {
     }).fetch();
     self.logger.Mmodbus_debug('scanGroups Array:', scanGroups);
     _.each(scanGroups, function(myGroup) {
-      switch (myGroup.table) {
-        case "Coil":
-          self.scanCoilGroup(myGroup);
-          break;
-        case "Integer":
-          //scanIntegerGroup(myGroup);
-          break;
-        case "Floating Point":
-          break;
-        default:
-          self.logger.Mmodbus_warn("ScanGroup ID: " + myGroup.groupNum + " has incorrect table Name");
-      }
+      self.scanGroup(myGroup);
     });
     //console.log('After each statement');
   }
-  scanCoilGroup(scanGroup) {
+  scanGroup(scanGroup) {
     let self = this;
     //console.log(scanGroup);
-    this.logger.Mmodbus_debug("Scanning Group # ", scanGroup.groupNum);
-    var address = scanGroup.startAddress;
-    var quantity = scanGroup.endAddress - address;
+    this.logger.Mmodbus_debug("Scanning Group # ", scanGroup.table + ';' + scanGroup.groupNum);
+    let address = scanGroup.startAddress;
+    let quantity = scanGroup.tags.length;
     this.logger.Mmodbus_debug("Address and length " + address + '  ' + quantity);
-    coil_response = self.readCoils(address, quantity, scanGroup);
-    //console.log('scan Group response ', coil_response);
-    this.logger.Mmodbus_debug('after read coil of Group', scanGroup.groupNum);
-  }
-  readCoils(coil_address, quantity, scanGroup){
-    let self = this;
-    //Neccessary Evil for Asychronous Transaction!
-    transaction = self.master.readCoils(coil_address, quantity);
-    transaction.setMaxRetries(0);
+    transaction = {};
+    switch (scanGroup.table) {
+      case "Coil":
+        transaction = self.master.readCoils(address, quantity);
+        transaction.setMaxRetries(0);
+        break;
+      case "Integer":
+        transaction = self.master.readHoldingRegisters(address, quantity);
+        transaction.setMaxRetries(0);
+        break;
+      case "Floating Point":
+
+        break;
+      default:
+        self.logger.Mmodbus_warn("ScanGroup ID: " + myGroup.groupNum + " has incorrect table Name");
+    }
 
     Utils.SyncTransactionOn(transaction,'timeout', function() {
       this.logger.Mmodbus_info('[transaction#timeout] Scan Group #:', scanGroup.groupNum);
@@ -266,16 +266,77 @@ Mmodbus = class Mmodbus {
         self.logger.Mmodbus_error(response.toString());
         self.reportModbusError(scanGroup);
       } else {
-        var coils;
         self.logger.Mmodbus_debug('Succesfully completed scanning of Scan Group #:', scanGroup.groupNum);
         //update LiveTags from the response and scanGroup
-        coils = response.getStates().map(Number);
-        console.log('Response: ' + coils);
-        self.updateLiveTags(coils, scanGroup);
-        //console.log(response.getStates().map(Number));
-        return coils;
+        self.handleRespone(response,scanGroup);
       }
     });
+
+    //self.readGroup(address, quantity, scanGroup);
+    //console.log('scan Group response ', coil_response);
+    this.logger.Mmodbus_debug('after read scanGroup', scanGroup.table + ';' + scanGroup.groupNum);
+  }
+  readGroup(coil_address, quantity, scanGroup){
+    let self = this;
+    transaction = {};
+    switch (scanGroup.table) {
+      case "Coil":
+        transaction = self.master.readCoils(coil_address, quantity);
+        transaction.setMaxRetries(0);
+        break;
+      case "Integer":
+
+        break;
+      case "Floating Point":
+
+        break;
+      default:
+        self.logger.Mmodbus_warn("ScanGroup ID: " + myGroup.groupNum + " has incorrect table Name");
+    }
+
+    Utils.SyncTransactionOn(transaction,'timeout', function() {
+      this.logger.Mmodbus_info('[transaction#timeout] Scan Group #:', scanGroup.groupNum);
+    });
+    //TODO What should I really do on error here?
+    Utils.SyncTransactionOn(transaction,'error', function(err) {
+      self.logger.Mmodbus_error('[transaction#error] Scan Group #: ' + scanGroup.groupNum + '.  Err Msg: ' + err.message);
+      //stopAllScanning();
+    });
+    Utils.SyncTransactionOn(transaction,'complete', function(err, response) {
+      //if an error occurs, could be a timeout
+      if (err) {
+        self.logger.Mmodbus_warn('Error Message on Complete w/ ScanGroup #:', scanGroup.groupNum)
+        self.logger.Mmodbus_warn(err.message);
+
+      } else
+      if (response.isException()) {
+        self.logger.Mmodbus_error('Got an Exception Message. Scan Group #:', scanGroup.groupNum)
+        self.logger.Mmodbus_error(response.toString());
+        self.reportModbusError(scanGroup);
+      } else {
+        self.logger.Mmodbus_debug('Succesfully completed scanning of Scan Group #:', scanGroup.groupNum);
+        //update LiveTags from the response and scanGroup
+        self.handleRespone(response,scanGroup);
+      }
+    });
+
+  }
+  handleRespone(response,scanGroup){
+    let self = this;
+    let data;
+
+    data = (scanGroup.table == "Coil") ? response.getStates().map(Number) : response.getValues();
+    self.logger.Mmodbus_debug('Scan Group Data for Group#:', scanGroup.groupNum);
+    console.log(data);
+    _.each(scanGroup.tags, (tag)=> {
+      var index = tag.address - scanGroup.startAddress;
+      var tagName = tag.tag_param;
+      var newValue = (scanGroup.table == "Coil") ? data[index] : self.readTypedValue(scanGroup.table,scanGroup.startAddress,tag,data);
+      console.log('Returned new Value: ',newValue);
+      self.logger.Mmodbus_debug('Updating Tag ' + tagName + ' to value of ' + newValue);
+      LiveTags.update({tag_param: tagName}, {$set: {value: newValue,quality: true}});
+    });
+
   }
   reportModbusError(scanGroup) {
     let self = this;
@@ -294,6 +355,7 @@ Mmodbus = class Mmodbus {
   updateLiveTags(data, scanGroup) {
     let self = this;
     let startAddress = scanGroup.startAddress;
+    if (scanGroup.table == 'Coil'){
     _.each(scanGroup.tags, (tag)=> {
       var index = tag.address - startAddress;
       //console.log('tag.address: '+ tag.address + ' . startArddress: ' + startAddress);
@@ -302,6 +364,43 @@ Mmodbus = class Mmodbus {
       self.logger.Mmodbus_debug('Updating Tag ' + tagName + ' to value of ' + newValue);
       LiveTags.update({tag_param: tagName}, {$set: {value: newValue,quality: true}});
     });
+    }
+    else{
+
+
+    }
+  }
+  readTypedValue(table,startingAddress, tag, buffer) {
+    let offset = (tag.address - startingAddress) * 2;
+    console.log("reading Tag.param",tag.tag_param);
+    console.log("Offset = ", offset)
+    switch (table)
+    {
+      case 'double':
+        return buffer.readDoubleBE(offset, true);
+
+      case 'Floating Point':
+        return buffer.readFloatBE(offset, true);
+
+      case 'Integer2':
+        return buffer.readUInt32BE(offset, true);
+
+      case 'Integer1':
+        return buffer.readInt32BE(offset, true);
+
+      case 'Integer':
+      case 'int8':
+        return buffer.readInt16BE(offset, true);
+
+      case 'bool':
+        return buffer.readInt16BE(offset, true) === 0 ? 0 : 1;
+
+      case 'string':
+        return buffer.toString();
+
+      default:
+        return buffer.readUInt16BE(offset, true);
+    }
   }
 
 
