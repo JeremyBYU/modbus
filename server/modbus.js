@@ -127,14 +127,7 @@ Mmodbus = class Mmodbus {
 */
   configureModbusCoilCollections() {
     //Get a list of all coils (neeed address, tag_id, tag_param)
-    let allCoils = Tags.find({
-        "params.table": "Coil"
-    }, {
-        fields: {
-            'tag': 1,
-            'params': 1
-        }
-    }).fetch();
+    let allCoils = Tags.find({"params.table": "Coil"}, {fields: {'tag': 1,'params': 1}}).fetch();
     //unfortunately this new Array has more than just coils, will need to clean it up
     //New array just containg the coils and their addess.
     let cleanCoils = new Array();
@@ -142,31 +135,18 @@ Mmodbus = class Mmodbus {
       _.each(tag.params, (param) => {
         if (param.table == "Coil") {
           let tag_param = tag.tag + '_' + param.name;
-          let new_coil = {
-            tagid: tag._id,
-            tag_param: tag_param,
-            address: param.address
-          };
+          let new_coil = {tagid: tag._id,tag_param: tag_param,address: param.address};
           cleanCoils.push(new_coil);
         }
       });
     });
     //create Scan Groups here
     Utils.assignScanGroup(cleanCoils,this.options.groupOptions.coilReadLength,"Coil");
-    //Utils.createScanGroup(cleanCoils,this.options.groupOptions.maxCoilGroups,this.options.groupOptions.coilReadLength,"Coil")
-
   }
   configureModbusHoldingRegisterCollections(){
     //make two Scan Groups, one that hold integers and one that holds floating points.
     //Get a list of all Holding Registers (neeed address, tag_id, tag_param)
-    let allHoldingRegisters = Tags.find({
-        "params.table": "Holding Register"
-    }, {
-        fields: {
-            'tag': 1,
-            'params': 1
-        }
-    }).fetch();
+    let allHoldingRegisters = Tags.find({"params.table": "Holding Register"}, {fields: {'tag': 1,'params': 1}}).fetch();
     //New array just containg the Integers and their addesses
     let cleanIntegers = new Array();
     //New array just containing the Floating Points and their addresses.
@@ -174,13 +154,8 @@ Mmodbus = class Mmodbus {
     _.each(allHoldingRegisters, (tag) => {
       _.each(tag.params, (param) => {
         if (param.table == "Holding Register") {
-          //Maybe separate floating and integer
           let tag_param = tag.tag + '_' + param.name;
-          let new_number = {
-            tagid: tag._id,
-            tag_param: tag_param,
-            address: param.address
-          };
+          let new_number = {tagid: tag._id,tag_param: tag_param,address: param.address};
           if(param.dataType == "Integer"){
             cleanIntegers.push(new_number);
           }
@@ -190,11 +165,9 @@ Mmodbus = class Mmodbus {
         }
       });
     });
-    //create Scan Groups here
+    //Create Scan Groups here
     Utils.assignScanGroup(cleanIntegers,this.options.groupOptions.holdingRegisterLength,"Integer");
     Utils.assignScanGroup(cleanFloats,this.options.groupOptions.holdingRegisterLength,"Floating Point");
-    //Utils.createScanGroup(cleanIntegers,this.options.groupOptions.maxHoldingRegisterGroups,this.options.groupOptions.holdingRegisterLength,"Integer");
-    //Utils.createScanGroup(cleanFloats,this.options.groupOptions.maxHoldingRegisterGroups,this.options.groupOptions.holdingRegisterLength,"Floating Point");
   }
 
   startAllScanning() {
@@ -229,19 +202,17 @@ Mmodbus = class Mmodbus {
     switch (scanGroup.table) {
       case "Coil":
         transaction = self.master.readCoils(address, quantity);
-        transaction.setMaxRetries(0);
         break;
       case "Integer":
         transaction = self.master.readHoldingRegisters(address, quantity);
-        transaction.setMaxRetries(0);
         break;
       case "Floating Point":
-
+        transaction = self.master.readHoldingRegisters(address, quantity);
         break;
       default:
         self.logger.Mmodbus_warn("ScanGroup ID: " + myGroup.groupNum + " has incorrect table Name");
     }
-
+    transaction.setMaxRetries(0);
     Utils.syncTransactionOn(transaction,'timeout', function() {
       this.logger.Mmodbus_info('[transaction#timeout] Scan Group #:', scanGroup.groupNum);
     });
@@ -269,6 +240,14 @@ Mmodbus = class Mmodbus {
     });
 
   }
+  /**
+   * This funciton will hande a response from a transaction. The updated tag data is evaluated from the response
+   * and the MongoDB collection LiveTags is updated
+   * @param {Object} response - This is Response object from a transaction.
+   *
+   * @param {Object} scanGroup - This is the scanGroup object for the transaction
+   *
+   */
   handleRespone(response,scanGroup){
     let self = this;
     let data;
@@ -287,6 +266,11 @@ Mmodbus = class Mmodbus {
     });
 
   }
+  /**
+   * This will function will report a Modbus error on scan group.  If too many erros occur, the scan group will be
+   * made inactive.
+   *
+   */
   reportModbusError(scanGroup) {
     let self = this;
     let errors = ScanGroups.find({
@@ -301,6 +285,19 @@ Mmodbus = class Mmodbus {
     ScanGroups.update({_id: scanGroup._id}, {$inc: {errorCount: 1}});
 
   }
+  /**
+   * Read data from a buffer based upon the data type
+   *
+   * @param {String} table - The table repersents the datatype, e.g. Integer
+   *
+   * @param {Number} startingAddress - The address to begin reading with in the buffer
+   *
+   * @param {Object} tag - Tag object
+   *
+   * @param {BUFFER} buffer - Buffer Object, from response of transaction
+   *
+   *@return {Number} - Returns the number from the buffer
+   */
   readTypedValue(table,startingAddress, tag, buffer) {
     let offset = (tag.address - startingAddress) * 2;
     //self.logger.Mmodbus_debug("reading Tag.param",tag.tag_param);
@@ -308,30 +305,21 @@ Mmodbus = class Mmodbus {
     switch (table){
       case 'double':
         return buffer.readDoubleBE(offset, true);
-
       case 'Floating Point':
         return buffer.readFloatBE(offset, true);
-
       case 'Integer2':
         return buffer.readUInt32BE(offset, true);
-
       case 'Integer1':
         return buffer.readInt32BE(offset, true);
-
       case 'Integer':
       case 'int8':
         return buffer.readInt16BE(offset, true);
-
       case 'bool':
         return buffer.readInt16BE(offset, true) === 0 ? 0 : 1;
-
       case 'string':
         return buffer.toString();
-
       default:
         return buffer.readUInt16BE(offset, true);
     }
   }
-
-
 }
