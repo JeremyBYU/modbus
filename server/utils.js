@@ -54,7 +54,7 @@ let createMasterConfiguration = (self) => {
   }
   let masterConfig = _.extend({},self.options.scanOptions,{transport:transport});
   return masterConfig;
-}
+};
 
 let getRegisterQuantityFromType = (table) =>{
   switch (table)
@@ -65,15 +65,15 @@ let getRegisterQuantityFromType = (table) =>{
     default:
       return 1;
   }
-}
+};
 
 /**
- * The logic finds the tag with the lowest number address.  It then groups
- * all items that are in range of the lower address and *lower address + option (default 25)*
- * It then adds this group of items as a Scan Group and the leftover items continue
- * to make more Scan Groups following the same logic
+ * This funciton will assignScanGroups from the provided items list (list of tags)
+ * It tries to maximize the size of the scan group (for modbus effeciency)
+ * However it always honor the max readLength of the argument provided.
+ * A scan group will alway be a specific data type (table), however there can
+ * be multiple scan groups for each table
  * @param {array} items - List of Tag_Params to add to scan group
- * @param {Number} maxGroups - The maximum number of scanGroups you will allow to be created
  * @param {Number} maxReadLength - The maximum range of a ScanGroup
  * @param {Number} table - Table name for the Scan Group
 */
@@ -138,11 +138,7 @@ let assignScanGroup = (items,maxReadLength,table) => {
   _.each(scanGroups, (scanGroup) =>{
     ScanGroups.insert(scanGroup);
   });
-
-}
-
-
-
+};
 Utils = {
   syncMasterOn: syncMasterOn,
   assignScanGroup: assignScanGroup,
