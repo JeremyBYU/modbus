@@ -20,6 +20,7 @@ Npm.depends({
 
 Package.onUse(function(api) {
   api.versionsFrom('1.2.0.2');
+
   api.use(['ecmascript','templating']);
   api.use('aldeed:collection2@2.5.0');
   api.use(['underscore','adriancbo:chalk'],'server');
@@ -32,12 +33,15 @@ Package.onUse(function(api) {
   api.addFiles(['server/logging.js','server/utils.js','server/modbus.js'],'server');
   api.addFiles('client/util.js','client');
 
-  api.export('Mmodbus')
+  api.export('Mmodbus');
+  api.export('Mmodbus_Utils');
 });
 
 Package.onTest(function(api) {
-  api.use('ecmascript');
+  api.use(['ecmascript','underscore']);
   api.use('tinytest');
-  api.use('jeremybyu:modbus');
-  api.addFiles('tests/modbus-tests.js');
+
+  api.use('sanjo:jasmine@0.20.2');
+  api.use('jeremybyu:mmodbus');
+  api.addFiles(['tests/server/fixtures.js','tests/server/modbus-tests.js'],'server');
 });

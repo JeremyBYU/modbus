@@ -1,3 +1,3 @@
 if(Meteor.isClient){
-  Template.registerHelper("Mmodbus", Mmodbus.collections);
+  Template.registerHelper("Mmodbus", Mmodbus_Utils.collections);
 }

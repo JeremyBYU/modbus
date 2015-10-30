@@ -53,7 +53,7 @@ Mmodbus = class Mmodbus {
     self.master = modbus.createMaster(masterConfig);
 
     //Generate basic event handling for master connections
-    self.createEvents();
+    self.createMasterEvents();
 
     //Configure Modbus Collections 'Live Tags' & 'Scan Groups'
     self.configureModbusCollections();
@@ -61,16 +61,16 @@ Mmodbus = class Mmodbus {
     //self.startAllScanning();
     //console.log(masterConfig);
   }
-  createEvents(){
+  createMasterEvents(){
     let self = this;
     Utils.syncMasterOn(self,'error', (err) => {
       self.logger.Mmodbus_error('[master#error] %s', err.message);
-      //stopAllScanning();
+      self.stopAllScanning();
     });
     Utils.syncMasterOn(self,'disconnected', () => {
       self.logger.Mmodbus_warn('[master#disconnected]');
-      //stopAllScanning();
-      //TODO Stop all Timers!
+      self.stopAllScanning();
+
     });
     //asyncMaster('connected',function(){console.log('test');});
     Utils.syncMasterOn(self,'connected', () => {
@@ -93,7 +93,6 @@ Mmodbus = class Mmodbus {
 
     //Clear the Scan Group Collection
     self.resetScanGroups();
-
     self.configureModbusCoilCollections();
     self.configureModbusHoldingRegisterCollections();
 
@@ -141,7 +140,7 @@ Mmodbus = class Mmodbus {
       });
     });
     //create Scan Groups here
-    Utils.assignScanGroup(cleanCoils,this.options.groupOptions.coilReadLength,"Coil");
+    Utils.createScanGroups(Utils.assignScanGroup(cleanCoils,this.options.groupOptions.coilReadLength,"Coil"));
   }
   configureModbusHoldingRegisterCollections(){
     //make two Scan Groups, one that hold integers and one that holds floating points.
@@ -166,16 +165,24 @@ Mmodbus = class Mmodbus {
       });
     });
     //Create Scan Groups here
-    Utils.assignScanGroup(cleanIntegers,this.options.groupOptions.holdingRegisterLength,"Integer");
-    Utils.assignScanGroup(cleanFloats,this.options.groupOptions.holdingRegisterLength,"Floating Point");
+    Utils.createScanGroups(Utils.assignScanGroup(cleanIntegers,this.options.groupOptions.holdingRegisterLength,"Integer"));
+    Utils.createScanGroups(Utils.assignScanGroup(cleanFloats,this.options.groupOptions.holdingRegisterLength,"Floating Point"));
   }
 
-  startAllScanning() {
+  startAllScanning(){
     if (this.modbus_timer == null) {
-      this.logger.Mmodbus_warn('Creating Scan timer for scan groups');
+      this.logger.Mmodbus_info('Creating Scan timer for scan groups');
       this.modbus_timer = Meteor.setInterval(this.scanAllGroups.bind(this), this.options.scanInterval);
     } else {
-      this.logger.Mmodbus_warn('Timer already exists for scan groups');
+      this.logger.Mmodbus_info('Timer already exists for scan groups');
+    }
+  }
+  stopAllScanning(){
+    this.logger.Mmodbus_warn('Stopping all scanning');
+    if(this.modbus_timer != null){
+      Meteor.clearInterval(this.modbus_timer);
+      //set timer to null indicating it is no longer active
+      this.modbus_timer = null;
     }
   }
   scanAllGroups() {

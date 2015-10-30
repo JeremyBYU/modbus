@@ -135,14 +135,20 @@ let assignScanGroup = (items,maxReadLength,table) => {
     //console.log(JSON.stringify(scanGroups));
   });
   //console.log(JSON.stringify(scanGroups));
+  return scanGroups;
+
+};
+let createScanGroups = (scanGroups) =>{
   _.each(scanGroups, (scanGroup) =>{
     ScanGroups.insert(scanGroup);
   });
-};
+}
 Utils = {
   syncMasterOn: syncMasterOn,
   assignScanGroup: assignScanGroup,
+  createScanGroups: createScanGroups,
   createMasterConfiguration: createMasterConfiguration,
   syncTransactionOn: syncTransactionOn
 
 };
+Mmodbus_Utils.Utils = Utils;
