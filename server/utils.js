@@ -71,13 +71,13 @@ let getRegisterQuantityFromType = (dataType) =>{
  * This funciton will assignScanGroups from the provided items list (list of tags)
  * It tries to maximize the size of the scan group (for modbus effeciency)
  * However it always honor the max readLength of the argument provided.
- * A scan group will alway be a specific data type (table), however there can
- * be multiple scan groups for each table
+ * A scan group will alway be a specific data type, however there can
+ * be multiple scan groups for each Data Type
  * @param {array} items - List of Tag_Params to add to scan group
  * @param {Number} maxReadLength - The maximum range of a ScanGroup
- * @param {Number} table - Table name for the Scan Group
+ * @param {Number} dataType - Data Type name for the Scan Group
 */
-let assignScanGroup = (items,maxReadLength,table) => {
+let assignScanGroup = (items,maxReadLength,dataType) => {
   let scanGroups = new Array();
   let scanGroup;
   let lastAddress;
@@ -89,7 +89,7 @@ let assignScanGroup = (items,maxReadLength,table) => {
   {
     if (i === lastTagIndex)
     {
-      scanGroup.quantity += getRegisterQuantityFromType(table) - 1;
+      scanGroup.quantity += getRegisterQuantityFromType(dataType) - 1;
     }
   }
   let createNewScanGroup = (groupNum,dataType,startAddress) =>{
@@ -109,7 +109,7 @@ let assignScanGroup = (items,maxReadLength,table) => {
 
   items.forEach((tag, i) => {
     if (i === 0){
-      scanGroup = createNewScanGroup(0,table,tag.address);
+      scanGroup = createNewScanGroup(0,dataType,tag.address);
       lastAddress = tag.address;
       scanGroup.tags.push(tag);
       adjustQuantity(scanGroup, i);
@@ -118,9 +118,9 @@ let assignScanGroup = (items,maxReadLength,table) => {
     }
     let diff = tag.address - lastAddress;
     if (scanGroup.quantity + diff > maxReadLength){
-      scanGroup.quantity += getRegisterQuantityFromType(table) - 1;
+      scanGroup.quantity += getRegisterQuantityFromType(dataType) - 1;
 
-      scanGroup = createNewScanGroup(scanGroups.length,table,tag.address);
+      scanGroup = createNewScanGroup(scanGroups.length,dataType,tag.address);
       lastAddress = tag.address;
       scanGroup.tags.push(tag);
       adjustQuantity(scanGroup, i);

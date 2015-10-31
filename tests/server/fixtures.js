@@ -18,7 +18,8 @@
     * @param {Number} continous - Should the tags be continous or randomly spread out?
     * @returns {Array} tagArray - An array of Tag Obejcts
     */
-   generateScanTags(addressLow,quantity,registersPerTag =1,continous = true){
+   generateScanTags(addressLow,quantity,dataType,continous = true){
+     registersPerTag  = Mmodbus_Utils.Utils.getRegisterQuantityFromType(dataType)
      //simple error check on quantities provided
      let tagArray = new Array();
      if(addressLow < 0 || quantity < 1 || quantity > 100000 ){
@@ -52,22 +53,35 @@
     * @param {Number} continous - Should the tags be continous or randomly spread out?
     * @returns {Array} tagArray - An array of Tag Obejcts
     */
-   generateFullTags(addressLow,quantity,table, continous = true){
-     let tagArray = new Array();
-     let registerQuantity = Utils.getRegisterQuantityFromType(table);
-
+   generateFullTags(addressLow,quantity,table, dataType,continous = true,paramsPerTag = 1){
      if(addressLow < 0 || quantity < 1 || quantity > 100000 ){
-       console.log('Address must be greater than -1; quanity must be greater than 0 and less than 10,000');
+       console.log('Address must be greater than -1; quanity must be greater than 0 and less than 100,000');
        return;
      }
+     let tagArray = new Array();
+     let registerQuantity = Mmodbus_Utils.Utils.getRegisterQuantityFromType(dataType);
+     let tagObject = null;
+     let lastAddress = addressLow;
      for(let i = addressLow;i < quantity;i++){
        let tag = 'XV' + i;
-       let param = "PV";
-       let address = continous ? i* registerQuantity :(i*registerQuantity + Math.floor(Math.random() * 5 ));
-       let dataType = (table == 'Coil') ? undefined : table;
+       let param = "PV" +i;
+       let address = continous ? i* registerQuantity :(lastAddress + registerQuantity + Math.floor(Math.random() * 5 ));
+       lastAddress = address;
 
-       let params = [].push(this.makeParmObject(param,table,))
-       tagArray.push(this.makeTagObject(tagid,tag_param,address));
+       if(tagObject == null || tagObject.params.length >= paramsPerTag){
+         //Create a new tag object and param
+         let params = new Array();
+         params.push(this.makeParmObject(param,table,address,dataType))
+         tagObject = this.makeFullTagObject(tag,params);
+         tagArray.push(tagObject);
+       }
+       else{
+         //tag object exists and has room for another param!
+         let paramObject = this.makeParmObject(param,table,address,dataType)
+         //console.log(tagObject);
+         tagObject.params.push(paramObject);
+       }
+
      }
      return tagArray;
 
