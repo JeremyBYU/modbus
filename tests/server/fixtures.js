@@ -27,4 +27,14 @@
    makeTagObject(tagid,tag_param,address){
      return {tagid: tagid,tag_param: tag_param,address: address}
    }
+   reduceScanGroupsToOneTagArray(scanGroups){
+     let tagArrays = new Array();
+     _.each(scanGroups,(group) =>{
+       tagArrays.push(group.tags);
+     });
+     let allTagsSingleArray = _.reduce(tagArrays, function(result, arr) {
+       return result.concat(arr)
+     }, []);
+     return allTagsSingleArray;
+   }
  }
