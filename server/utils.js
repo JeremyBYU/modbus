@@ -56,8 +56,8 @@ let createMasterConfiguration = (self) => {
   return masterConfig;
 };
 
-let getRegisterQuantityFromType = (table) =>{
-  switch (table)
+let getRegisterQuantityFromType = (dataType) =>{
+  switch (dataType)
   {
     case 'Floating Point':
     case 'Integer':
@@ -92,10 +92,10 @@ let assignScanGroup = (items,maxReadLength,table) => {
       scanGroup.quantity += getRegisterQuantityFromType(table) - 1;
     }
   }
-  let createNewScanGroup = (groupNum,table,startAddress) =>{
+  let createNewScanGroup = (groupNum,dataType,startAddress) =>{
     return{
       groupNum: groupNum,
-      table: table,
+      dataType: dataType,
       startAddress: startAddress,
       quantity: 1,
       tags: new Array(),
@@ -148,7 +148,8 @@ Utils = {
   assignScanGroup: assignScanGroup,
   createScanGroups: createScanGroups,
   createMasterConfiguration: createMasterConfiguration,
-  syncTransactionOn: syncTransactionOn
+  syncTransactionOn: syncTransactionOn,
+  getRegisterQuantityFromType: getRegisterQuantityFromType
 
 };
 Mmodbus_Utils.Utils = Utils;

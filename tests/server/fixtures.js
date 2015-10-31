@@ -8,10 +8,20 @@
    constructor() {
      this.test = 1;
    }
+   /**
+    * Generates Scan Tags, These tag objects are the simple tags that are placed
+    * in the ScanGrops "tags" array.  They are not the Full tags that reside in a Tag Collection
+    *
+    * @param {Number} addressLow - The starting Address to begin creating tags
+    * @param {Number} quantity - How many tags to make
+    * @param {Number} registersPerTag - How many registers should each tag take up
+    * @param {Number} continous - Should the tags be continous or randomly spread out?
+    * @returns {Array} tagArray - An array of Tag Obejcts
+    */
    generateScanTags(addressLow,quantity,registersPerTag =1,continous = true){
      //simple error check on quantities provided
      let tagArray = new Array();
-     if(addressLow < 0 || quantity < 1 || quantity > 10000 ){
+     if(addressLow < 0 || quantity < 1 || quantity > 100000 ){
        console.log('Address must be greater than -1; quanity must be greater than 0 and less than 10,000');
        return;
      }
@@ -27,6 +37,41 @@
    makeTagObject(tagid,tag_param,address){
      return {tagid: tagid,tag_param: tag_param,address: address}
    }
+   makeFullTagObject(tag,params){
+     return {tag:tag,params:params};
+   }
+   makeParmObject(name,table,address,dataType){
+     return {name:name,table:table,address:address,dataType:dataType};
+   }
+   /**
+    * Generates FullTags, These are the Full tags that reside in a Tag Collection
+    *
+    * @param {Number} addressLow - The starting Address to begin creating tags
+    * @param {Number} quantity - How many tags to make
+    * @param {Number} registersPerTag - How many registers should each tag take up
+    * @param {Number} continous - Should the tags be continous or randomly spread out?
+    * @returns {Array} tagArray - An array of Tag Obejcts
+    */
+   generateFullTags(addressLow,quantity,table, continous = true){
+     let tagArray = new Array();
+     let registerQuantity = Utils.getRegisterQuantityFromType(table);
+
+     if(addressLow < 0 || quantity < 1 || quantity > 100000 ){
+       console.log('Address must be greater than -1; quanity must be greater than 0 and less than 10,000');
+       return;
+     }
+     for(let i = addressLow;i < quantity;i++){
+       let tag = 'XV' + i;
+       let param = "PV";
+       let address = continous ? i* registerQuantity :(i*registerQuantity + Math.floor(Math.random() * 5 ));
+       let dataType = (table == 'Coil') ? undefined : table;
+
+       let params = [].push(this.makeParmObject(param,table,))
+       tagArray.push(this.makeTagObject(tagid,tag_param,address));
+     }
+     return tagArray;
+
+   }
    reduceScanGroupsToOneTagArray(scanGroups){
      let tagArrays = new Array();
      _.each(scanGroups,(group) =>{
@@ -37,4 +82,5 @@
      }, []);
      return allTagsSingleArray;
    }
+
  }

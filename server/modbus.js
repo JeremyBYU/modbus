@@ -140,7 +140,7 @@ Mmodbus = class Mmodbus {
       });
     });
     //create Scan Groups here
-    Utils.createScanGroups(Utils.assignScanGroup(cleanCoils,this.options.groupOptions.coilReadLength,"Coil"));
+    Utils.createScanGroups(Utils.assignScanGroup(cleanCoils,this.options.groupOptions.coilReadLength,"Bit"));
   }
   configureModbusHoldingRegisterCollections(){
     //make two Scan Groups, one that hold integers and one that holds floating points.
