@@ -62,8 +62,8 @@
      let registerQuantity = Mmodbus_Utils.Utils.getRegisterQuantityFromType(dataType);
      let tagObject = null;
      let lastAddress = addressLow;
-     for(let i = addressLow;i < quantity;i++){
-       let tag = 'XV' + i;
+     for(let i = addressLow;i < quantity + addressLow;i++){
+       let tag = Math.random().toString(36).substr(2, 10);
        let param = "PV" +i;
        let address = continous ? i* registerQuantity :(lastAddress + registerQuantity + Math.floor(Math.random() * 5 ));
        lastAddress = address;

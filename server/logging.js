@@ -3,12 +3,14 @@ let MongoDB = Npm.require('winston-mongodb').MongoDB;
 //let winston-mondgb = Npm.require('winston-mongodb');
 let myCustomLevels = {
   levels: {
+    Mmodbus_silly: 0,
     Mmodbus_debug: 1,
     Mmodbus_info: 2,
     Mmodbus_warn: 3,
     Mmodbus_error: 4
   },
   colors: {
+    Mmodbus_sily: 'green',
     Mmodbus_debug: 'green',
     Mmodbus_info: 'blue',
     Mmodbus_warn: 'yellow',
@@ -27,7 +29,7 @@ let mongoOptions = {
   timeout: 50000
   };
 let consoleOptions = {
-  level: 'Mmodbus_debug',
+  level: 'Mmodbus_warn',
   colorize: true,
   levels: myCustomLevels.levels,
   colors: myCustomLevels.colors

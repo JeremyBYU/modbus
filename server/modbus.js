@@ -115,6 +115,7 @@ Mmodbus = class Mmodbus {
                 tagid: tag._id,
                 tag_param: tag_param,
                 description: tag.description,
+                modifiedAt: Date(),
                 value: 0
             };
             LiveTags.insert(new_livetag);
@@ -201,13 +202,13 @@ Mmodbus = class Mmodbus {
   scanGroup(scanGroup) {
     let self = this;
     //console.log(scanGroup);
-    this.logger.Mmodbus_debug("Scanning Group # " +scanGroup.groupNum + ' of table ' + scanGroup.table);
+    this.logger.Mmodbus_debug("Scanning Group # " +scanGroup.groupNum + ' of Data Type ' + scanGroup.dataType);
     let address = scanGroup.startAddress;
     let quantity = scanGroup.quantity;
     this.logger.Mmodbus_debug("Address " + address + ' and length ' + quantity);
     transaction = {};
-    switch (scanGroup.table) {
-      case "Coil":
+    switch (scanGroup.dataType) {
+      case "Bit":
         transaction = self.master.readCoils(address, quantity);
         break;
       case "Integer":
@@ -217,7 +218,7 @@ Mmodbus = class Mmodbus {
         transaction = self.master.readHoldingRegisters(address, quantity);
         break;
       default:
-        self.logger.Mmodbus_warn("ScanGroup ID: " + myGroup.groupNum + " has incorrect table Name");
+        self.logger.Mmodbus_warn("ScanGroup ID: " + scanGroup.groupNum + " has incorrect Data Type");
     }
     transaction.setMaxRetries(0);
     Utils.syncTransactionOn(transaction,'timeout', function() {
@@ -259,17 +260,17 @@ Mmodbus = class Mmodbus {
     let self = this;
     let data;
 
-    data = (scanGroup.table == "Coil") ? response.getStates().map(Number) : response.getValues();
+    data = (scanGroup.dataType == "Bit") ? response.getStates().map(Number) : response.getValues();
     //self.logger.Mmodbus_debug('Scan Group Data for Group#:', scanGroup.table,scanGroup.groupNum);
     //console.log(data);
     //self.logger.Mmodbus_debug('test', data);
     _.each(scanGroup.tags, (tag)=> {
       var index = tag.address - scanGroup.startAddress;
       var tagName = tag.tag_param;
-      var newValue = (scanGroup.table == "Coil") ? data[index] : self.readTypedValue(scanGroup.table,scanGroup.startAddress,tag,data);
+      var newValue = (scanGroup.dataType == "Bit") ? data[index] : self.readTypedValue(scanGroup.dataType,scanGroup.startAddress,tag,data);
       //console.log('Returned new Value: ',newValue);
-      self.logger.Mmodbus_debug('Updating Tag ' + tagName + ' at address ' + tag.address + ' to value of ' + newValue);
-      LiveTags.update({tag_param: tagName}, {$set: {value: newValue,quality: true}});
+      self.logger.Mmodbus_silly('Updating Tag ' + tagName + ' at address ' + tag.address + ' to value of ' + newValue);
+      LiveTags.update({tag_param: tagName}, {$set: {value: newValue,quality: true, modifiedAt: new Date()}});
     });
 
   }
@@ -295,7 +296,7 @@ Mmodbus = class Mmodbus {
   /**
    * Read data from a buffer based upon the data type
    *
-   * @param {String} table - The table repersents the datatype, e.g. Integer
+   * @param {String} dataType - The dataType repersents the datatype, e.g. Integer
    *
    * @param {Number} startingAddress - The address to begin reading with in the buffer
    *
@@ -305,11 +306,11 @@ Mmodbus = class Mmodbus {
    *
    *@return {Number} - Returns the number from the buffer
    */
-  readTypedValue(table,startingAddress, tag, buffer) {
+  readTypedValue(dataType,startingAddress, tag, buffer) {
     let offset = (tag.address - startingAddress) * 2;
     //self.logger.Mmodbus_debug("reading Tag.param",tag.tag_param);
     //self.logger.Mmodbus_debug("Offset = ", offset)
-    switch (table){
+    switch (dataType){
       case 'double':
         return buffer.readDoubleBE(offset, true);
       case 'Floating Point':
