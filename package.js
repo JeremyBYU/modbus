@@ -22,7 +22,7 @@ Package.onUse(function(api) {
   api.versionsFrom('1.2.0.2');
 
   api.use(['ecmascript','templating']);
-  api.use('aldeed:collection2@2.5.0');
+  api.use(['aldeed:collection2@2.5.0','mikowals:batch-insert@1.1.13']);
   api.use(['underscore','adriancbo:chalk'],'server');
 
   api.addFiles('lib/models/liveTags.js');

@@ -53,13 +53,13 @@ Mmodbus = class Mmodbus {
     self.master = modbus.createMaster(masterConfig);
 
     //Generate basic event handling for master connections
-    console.time('createMasterEvents')
+    //console.time('createMasterEvents')
     self.createMasterEvents();
-    console.timeEnd('createMasterEvents')
+    //console.timeEnd('createMasterEvents')
     //Configure Modbus Collections 'Live Tags' & 'Scan Groups'
-    console.time('configureModbusCollections')
+    //console.time('configureModbusCollections')
     self.configureModbusCollections();
-    console.timeEnd('configureModbusCollections')
+    //console.timeEnd('configureModbusCollections')
 
     //self.startAllScanning();
     //console.log(masterConfig);
@@ -91,23 +91,23 @@ Mmodbus = class Mmodbus {
   configureModbusCollections() {
     let self = this;
     //Clear the Live Tag Collection
-    console.time('resetLiveTags')
+    //console.time('resetLiveTags')
     self.resetLiveTags();
-    console.timeEnd('resetLiveTags')
-    console.time('configureLiveTagCollection')
+    //console.timeEnd('resetLiveTags')
+    //console.time('configureLiveTagCollection')
     self.configureLiveTagCollection();
-    console.timeEnd('configureLiveTagCollection')
+    //console.timeEnd('configureLiveTagCollection')
 
     //Clear the Scan Group Collection
-    console.time('resetScanGroups')
+    //console.time('resetScanGroups')
     self.resetScanGroups();
-    console.timeEnd('resetScanGroups')
-    console.time('configureModbusCoilCollections')
+    //console.timeEnd('resetScanGroups')
+    //console.time('configureModbusCoilCollections')
     self.configureModbusCoilCollections();
-    console.timeEnd('configureModbusCoilCollections')
-    console.time('configureModbusHoldingRegisterCollections')
+    //console.timeEnd('configureModbusCoilCollections')
+    //console.time('configureModbusHoldingRegisterCollections')
     self.configureModbusHoldingRegisterCollections();
-    console.timeEnd('configureModbusHoldingRegisterCollections')
+    //console.timeEnd('configureModbusHoldingRegisterCollections')
 
   }
   configureLiveTagCollection() {
@@ -120,9 +120,10 @@ Mmodbus = class Mmodbus {
             'params': 1
         }
     }).fetch();
-    console.timeEnd('getAllTags');
+    //console.timeEnd('getAllTags');
     //Loop through each tag
-    console.time('createAllLiveTags');
+    //console.time('createAllLiveTags');
+    let liveTagCollection = new Array();
     _.each(allTags, function(tag) {
       //Loop through each Parameter
         _.each(tag.params, function(param) {
@@ -134,10 +135,12 @@ Mmodbus = class Mmodbus {
                 modifiedAt: Date(),
                 value: 0
             };
-            LiveTags.insert(new_livetag);
+            liveTagCollection.push(new_livetag);
+            //LiveTags.insert(new_livetag);
         });
     });
-    console.timeEnd('createAllLiveTags');
+    LiveTags.batchInsert(liveTagCollection);
+    //console.timeEnd('createAllLiveTags');
   }
 /**
  * This wil create the Scan Group Collections from the Tags collection which have coils

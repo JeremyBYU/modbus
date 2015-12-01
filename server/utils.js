@@ -139,9 +139,10 @@ let assignScanGroup = (items,maxReadLength,dataType) => {
 
 };
 let createScanGroups = (scanGroups) =>{
-  _.each(scanGroups, (scanGroup) =>{
-    ScanGroups.insert(scanGroup);
-  });
+  ScanGroups.batchInsert(scanGroups);
+  // _.each(scanGroups, (scanGroup) =>{
+  //   ScanGroups.insert(scanGroup);
+  // });
 }
 Utils = {
   syncMasterOn: syncMasterOn,
