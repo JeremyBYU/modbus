@@ -53,10 +53,13 @@ Mmodbus = class Mmodbus {
     self.master = modbus.createMaster(masterConfig);
 
     //Generate basic event handling for master connections
+    console.time('createMasterEvents')
     self.createMasterEvents();
-
+    console.timeEnd('createMasterEvents')
     //Configure Modbus Collections 'Live Tags' & 'Scan Groups'
+    console.time('configureModbusCollections')
     self.configureModbusCollections();
+    console.timeEnd('configureModbusCollections')
 
     //self.startAllScanning();
     //console.log(masterConfig);
@@ -88,17 +91,28 @@ Mmodbus = class Mmodbus {
   configureModbusCollections() {
     let self = this;
     //Clear the Live Tag Collection
+    console.time('resetLiveTags')
     self.resetLiveTags();
+    console.timeEnd('resetLiveTags')
+    console.time('configureLiveTagCollection')
     self.configureLiveTagCollection();
+    console.timeEnd('configureLiveTagCollection')
 
     //Clear the Scan Group Collection
+    console.time('resetScanGroups')
     self.resetScanGroups();
+    console.timeEnd('resetScanGroups')
+    console.time('configureModbusCoilCollections')
     self.configureModbusCoilCollections();
+    console.timeEnd('configureModbusCoilCollections')
+    console.time('configureModbusHoldingRegisterCollections')
     self.configureModbusHoldingRegisterCollections();
+    console.timeEnd('configureModbusHoldingRegisterCollections')
 
   }
   configureLiveTagCollection() {
     //return array of all Tags
+    console.time('getAllTags');
     var allTags = Tags.find({}, {
         fields: {
             'tag': 1,
@@ -106,7 +120,9 @@ Mmodbus = class Mmodbus {
             'params': 1
         }
     }).fetch();
+    console.timeEnd('getAllTags');
     //Loop through each tag
+    console.time('createAllLiveTags');
     _.each(allTags, function(tag) {
       //Loop through each Parameter
         _.each(tag.params, function(param) {
@@ -121,6 +137,7 @@ Mmodbus = class Mmodbus {
             LiveTags.insert(new_livetag);
         });
     });
+    console.timeEnd('createAllLiveTags');
   }
 /**
  * This wil create the Scan Group Collections from the Tags collection which have coils
