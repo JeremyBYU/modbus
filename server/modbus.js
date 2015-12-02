@@ -246,22 +246,22 @@ Mmodbus = class Mmodbus {
     });
     //TODO What should I really do on error here?
     Utils.syncTransactionOn(transaction,'error', function(err) {
-      self.logger.Mmodbus_error('[transaction#error] Scan Group #: ' + scanGroup.groupNum + '.  Err Msg: ' + err.message);
+      self.logger.Mmodbus_error(`[transaction#error] ${scanGroup.groupNum} of DataType ${scanGroup.dataType}` +  'Err Msg: ' + err.message);
       //stopAllScanning();
     });
     Utils.syncTransactionOn(transaction,'complete', function(err, response) {
       //if an error occurs, could be a timeout
       if (err) {
-        self.logger.Mmodbus_warn('Error Message on Complete w/ ScanGroup #:', scanGroup.groupNum)
+        self.logger.Mmodbus_warn(`Error Message on Complete w/ ${scanGroup.groupNum} of DataType ${scanGroup.dataType}`)
         self.logger.Mmodbus_warn(err.message);
 
       } else
       if (response.isException()) {
-        self.logger.Mmodbus_error('Got an Exception Message. Scan Group #:', scanGroup.groupNum)
+        self.logger.Mmodbus_error(`Got an Exception Message. Scan Group #: ${scanGroup.groupNum} of DataType ${scanGroup.dataType}`)
         self.logger.Mmodbus_error(response.toString());
         self.reportModbusError(scanGroup);
       } else {
-        self.logger.Mmodbus_debug('Succesfully completed scanning of Scan Group #:', scanGroup.groupNum);
+        self.logger.Mmodbus_debug(`Succesfully completed scanning of Scan Group #: ${scanGroup.groupNum} of DataType ${scanGroup.dataType}`);
         //update LiveTags from the response and scanGroup
         self.handleRespone(response,scanGroup);
       }
@@ -340,6 +340,7 @@ Mmodbus = class Mmodbus {
       case 'Integer1':
         return buffer.readInt32BE(offset, true);
       case 'Integer':
+        return buffer.readUInt16BE(offset, true);
       case 'int8':
         return buffer.readInt16BE(offset, true);
       case 'bool':
@@ -350,4 +351,76 @@ Mmodbus = class Mmodbus {
         return buffer.readUInt16BE(offset, true);
     }
   }
+  updateValue(tag_param,value){
+    [tag,param, ...rest] = tag_param.split('_');
+    if(this.isEmpty(tag) || this.isEmpty(param)){
+      return {error: `${tag_param} is a malformed tag. Should be of form tag_param`, success:false}
+    }
+    self.logger.Mmodbus_debug(`Tag : ${tag} Param: ${param} Rest: ${rest}`);
+    let tagObj = Tags.findOne({tag:tag});
+    if(tagObj === undefined){
+      return {error: `${tag_param} does not exist in database`, success:false}
+    }
+    paramObj = _.findWhere(tagObj.params,{name:param});
+    if(paramObj === undefined){
+      return {error: `Tag ${tag} is valid, but param ${param} is not valid for this tag`, success:false}
+    }
+    this.modbusWrite(tag_param,paramObj.table,paramObj.dataType,paramObj.address)
+    self.logger.Mmodbus_debug(`tagObj.params: ${JSON.stringify(paramObj,null,4)}`);
+
+  }
+  modbusWrite(tag_param,table,dataType,address){
+    let self = this;
+    //console.log(scanGroup);
+    this.logger.Mmodbus_debug("Scanning Group # " +scanGroup.groupNum + ' of Data Type ' + scanGroup.dataType);
+    
+    let quantity = scanGroup.quantity;
+    this.logger.Mmodbus_debug("Address " + address + ' and length ' + quantity);
+    transaction = {};
+    switch (scanGroup.dataType) {
+      case "Bit":
+        transaction = self.master.readCoils(address, quantity);
+        break;
+      case "Integer":
+        transaction = self.master.readHoldingRegisters(address, quantity);
+        break;
+      case "Floating Point":
+        transaction = self.master.readHoldingRegisters(address, quantity);
+        break;
+      default:
+        self.logger.Mmodbus_warn("ScanGroup ID: " + scanGroup.groupNum + " has incorrect Data Type");
+    }
+    transaction.setMaxRetries(0);
+    Utils.syncTransactionOn(transaction,'timeout', function() {
+      this.logger.Mmodbus_info('[transaction#timeout] Scan Group #:', scanGroup.groupNum);
+    });
+    //TODO What should I really do on error here?
+    Utils.syncTransactionOn(transaction,'error', function(err) {
+      self.logger.Mmodbus_error(`[transaction#error] ${scanGroup.groupNum} of DataType ${scanGroup.dataType}` +  'Err Msg: ' + err.message);
+      //stopAllScanning();
+    });
+    Utils.syncTransactionOn(transaction,'complete', function(err, response) {
+      //if an error occurs, could be a timeout
+      if (err) {
+        self.logger.Mmodbus_warn(`Error Message on Complete w/ ${scanGroup.groupNum} of DataType ${scanGroup.dataType}`)
+        self.logger.Mmodbus_warn(err.message);
+
+      } else
+      if (response.isException()) {
+        self.logger.Mmodbus_error(`Got an Exception Message. Scan Group #: ${scanGroup.groupNum} of DataType ${scanGroup.dataType}`)
+        self.logger.Mmodbus_error(response.toString());
+        self.reportModbusError(scanGroup);
+      } else {
+        self.logger.Mmodbus_debug(`Succesfully completed scanning of Scan Group #: ${scanGroup.groupNum} of DataType ${scanGroup.dataType}`);
+        //update LiveTags from the response and scanGroup
+        self.handleRespone(response,scanGroup);
+      }
+    });
+
+
+  }
+  isEmpty(str){
+    return (!str || 0 === str.length);
+  }
+
 }
