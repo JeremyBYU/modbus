@@ -1,8 +1,8 @@
 
-//Required NPM Modules
+//  Required NPM Modules
 let modbus = Npm.require('h5.modbus');
 
-//This is our globally exported object from this package
+//  This is our globally exported object from this package
 Mmodbus = class Mmodbus {
   /**
    * Constructor for Mmodbus Object.  Pass in configuraton objects
@@ -14,166 +14,163 @@ Mmodbus = class Mmodbus {
    * @returns {Object} Provdes MModbus object
    */
   constructor({
-    scanOptions : {supressTransationErrors=true,retryOnException= false,maxConcurrentRequests= 1, defaultUnit= 1,defaultMaxRetries= 1,defaultTimeout= 1000} ={},
-    rtu : { serialPort = '/dev/ttyACM0', baudRate= 9600, type= 'serial'} ={},
-    ip : { type= 'tcp', host= '127.0.0.1', port= 502, autoConnect= true, autoReconnect= true, minConnectTime= 2500, maxReconnectTime= 5000} = {},
-    groupOptions : {coilReadLength = 25,holdingRegisterLength = 25,maxCoilGroups = 5, maxHoldingRegisterGroups = 10}= {},
+    scanOptions: {supressTransationErrors = true, retryOnException = false, maxConcurrentRequests = 1, defaultUnit = 1, defaultMaxRetries = 1, defaultTimeout = 1000} = {},
+    rtu: { serialPort = '/dev/ttyACM0', baudRate = 9600, type = 'serial'} = {},
+    ip: { type = 'tcp', host = '127.0.0.1', port = 502, autoConnect = true, autoReconnect = true, minConnectTime = 2500, maxReconnectTime = 5000} = {},
+    groupOptions: {coilReadLength = 25, holdingRegisterLength = 25, maxCoilGroups = 5, maxHoldingRegisterGroups = 10} = {},
     useIP = true,
     scanInterval = 5000
-  })
-  {
-    //Options Object
+  }) {
+    //  Options Object
     this.options = {};
-    //Options for H5 Modbus
-    this.options.scanOptions = {supressTransationErrors,retryOnException, maxConcurrentRequests,defaultUnit,defaultMaxRetries,defaultTimeout};
-    this.options.rtu = {serialPort,baudRate,type};
-    this.options.ip = {type,host,port,autoConnect,autoReconnect,minConnectTime,maxReconnectTime};
-    //Options for MModbus
-    this.options.groupOptions = {coilReadLength,holdingRegisterLength,maxCoilGroups,maxHoldingRegisterGroups};
+    //  Options for H5 Modbus
+    this.options.scanOptions = {supressTransationErrors, retryOnException, maxConcurrentRequests, defaultUnit, defaultMaxRetries, defaultTimeout};
+    this.options.rtu = {serialPort, baudRate, type};
+    this.options.ip = {type, host, port, autoConnect, autoReconnect, minConnectTime, maxReconnectTime};
+    //  Options for MModbus
+    this.options.groupOptions = {coilReadLength, holdingRegisterLength, maxCoilGroups, maxHoldingRegisterGroups};
     this.options.useIP = useIP;
     this.options.scanInterval = scanInterval;
 
-    //create logger
+    //  create logger
     this.logger = Logger;
-    //Add Colleciton Reference
-    this.collections = {LiveTags: LiveTags,ScanGrups: ScanGroups,Tags: Tags};
-    //console.log(this.options);
-    //console.log(this.options.scanOptions);
-    //placeholder for the Meteor Timers
+    //  Add Colleciton Reference
+    this.collections = {LiveTags: LiveTags, ScanGrups: ScanGroups, Tags: Tags};
+    //  console.log(this.options);
+    //  console.log(this.options.scanOptions);
+    //  placeholder for the Meteor Timers
     this.modbus_timer = null;
     this.initialize();
   }
   /**
 
   */
-  initialize(){
-    self = this;
+  initialize() {
+    let self = this;
     let masterConfig = Utils.createMasterConfiguration(self);
-    //console.log(masterConfig);
+    //  console.log(masterConfig);
     self.master = modbus.createMaster(masterConfig);
 
-    //Generate basic event handling for master connections
-    //console.time('createMasterEvents')
+    //  Generate basic event handling for master connections
+    //  console.time('createMasterEvents')
     self.createMasterEvents();
-    //console.timeEnd('createMasterEvents')
-    //Configure Modbus Collections 'Live Tags' & 'Scan Groups'
-    //console.time('configureModbusCollections')
+    //  console.timeEnd('createMasterEvents')
+    //  Configure Modbus Collections 'Live Tags' & 'Scan Groups'
+    //  console.time('configureModbusCollections')
     self.configureModbusCollections();
-    //console.timeEnd('configureModbusCollections')
+    //  console.timeEnd('configureModbusCollections')
 
-    //self.startAllScanning();
-    //console.log(masterConfig);
+    //  self.startAllScanning();
+    //  console.log(masterConfig);
   }
-  createMasterEvents(){
+  createMasterEvents() {
     let self = this;
-    Utils.syncMasterOn(self,'error', (err) => {
+    Utils.syncMasterOn(self, 'error', (err) => {
       self.logger.Mmodbus_error('[master#error] %s', err.message);
       self.stopAllScanning();
     });
-    Utils.syncMasterOn(self,'disconnected', () => {
+    Utils.syncMasterOn(self, 'disconnected', () => {
       self.logger.Mmodbus_warn('[master#disconnected]');
       self.stopAllScanning();
-
     });
-    //asyncMaster('connected',function(){console.log('test');});
-    Utils.syncMasterOn(self,'connected', () => {
+    //  asyncMaster('connected',function(){console.log('test');});
+    Utils.syncMasterOn(self, 'connected', () => {
       self.logger.Mmodbus_info('[master#connected]');
       self.logger.Mmodbus_info('Beggining Scanning of Coils');
       self.startAllScanning();
     });
   }
-  resetLiveTags(){
+  resetLiveTags() {
     LiveTags.remove({});
   }
-  resetScanGroups(){
+  resetScanGroups() {
     ScanGroups.remove({});
   }
   configureModbusCollections() {
     let self = this;
-    //Clear the Live Tag Collection
-    //console.time('resetLiveTags')
+    //  Clear the Live Tag Collection
+    //  console.time('resetLiveTags')
     self.resetLiveTags();
-    //console.timeEnd('resetLiveTags')
-    //console.time('configureLiveTagCollection')
+    //  console.timeEnd('resetLiveTags')
+    //  console.time('configureLiveTagCollection')
     self.configureLiveTagCollection();
-    //console.timeEnd('configureLiveTagCollection')
+    //  console.timeEnd('configureLiveTagCollection')
 
-    //Clear the Scan Group Collection
-    //console.time('resetScanGroups')
+    //  Clear the Scan Group Collection
+    //  console.time('resetScanGroups')
     self.resetScanGroups();
-    //console.timeEnd('resetScanGroups')
-    //console.time('configureModbusCoilCollections')
+    //  console.timeEnd('resetScanGroups')
+    //  console.time('configureModbusCoilCollections')
     self.configureModbusCoilCollections();
-    //console.timeEnd('configureModbusCoilCollections')
-    //console.time('configureModbusHoldingRegisterCollections')
+    //  console.timeEnd('configureModbusCoilCollections')
+    //  console.time('configureModbusHoldingRegisterCollections')
     self.configureModbusHoldingRegisterCollections();
-    //console.timeEnd('configureModbusHoldingRegisterCollections')
-
+    //  console.timeEnd('configureModbusHoldingRegisterCollections')
   }
   configureLiveTagCollection() {
-    //return array of all Tags
-    console.time('getAllTags');
+    //  return array of all Tags
+    //  console.time('getAllTags');
     var allTags = Tags.find({}, {
-        fields: {
-            'tag': 1,
-            'description': 1,
-            'params': 1
-        }
+      fields: {
+        'tag': 1,
+        'description': 1,
+        'params': 1
+      }
     }).fetch();
-    //console.timeEnd('getAllTags');
-    //Loop through each tag
-    //console.time('createAllLiveTags');
-    let liveTagCollection = new Array();
+    //  console.timeEnd('getAllTags');
+    //  Loop through each tag
+    //  console.time('createAllLiveTags');
+    let liveTagCollection = [];
     _.each(allTags, function(tag) {
-      //Loop through each Parameter
-        _.each(tag.params, function(param) {
-            var tag_param = tag.tag + '_' + param.name;
-            var new_livetag = {
-                tagid: tag._id,
-                tag_param: tag_param,
-                description: tag.description,
-                modifiedAt: Date(),
-                value: 0
-            };
-            liveTagCollection.push(new_livetag);
-            //LiveTags.insert(new_livetag);
-        });
+      //    Loop through each Parameter
+      _.each(tag.params, function(param) {
+        let tagParam = tag.tag + '_' + param.name;
+        let newLivetag = {
+          tagid: tag._id,
+          tag_param: tagParam,
+          description: tag.description,
+          modifiedAt: Date(),
+          value: 0
+        };
+        liveTagCollection.push(newLivetag);
+        //  LiveTags.insert(new_livetag);
+      });
     });
     LiveTags.batchInsert(liveTagCollection);
-    //console.timeEnd('createAllLiveTags');
+    //  console.timeEnd('createAllLiveTags');
   }
 /**
  * This wil create the Scan Group Collections from the Tags collection which have coils
 */
   configureModbusCoilCollections() {
-    //Get a list of all coils (neeed address, tag_id, tag_param)
-    let allCoils = Tags.find({"params.table": "Coil"}, {fields: {'tag': 1,'params': 1}}).fetch();
-    //unfortunately this new Array has more than just coils, will need to clean it up
-    //New array just containg the coils and their addess.
-    let cleanCoils = new Array();
+    //  Get a list of all coils (neeed address, tag_id, tag_param)
+    let allCoils = Tags.find({"params.table": "Coil"}, {fields: {'tag': 1, 'params': 1}}).fetch();
+    //  unfortunately this new Array has more than just coils, will need to clean it up
+    //  New array just containg the coils and their addess.
+    let cleanCoils = [];
     _.each(allCoils, (tag) => {
       _.each(tag.params, (param) => {
-        if (param.table == "Coil") {
-          let tag_param = tag.tag + '_' + param.name;
-          let new_coil = {tagid: tag._id,tag_param: tag_param,address: param.address};
-          cleanCoils.push(new_coil);
+        if (param.table === "Coil") {
+          let tagParam = tag.tag + '_' + param.name;
+          let newCoil = {tagid: tag._id, tag_param: tagParam, address: param.address};
+          cleanCoils.push(newCoil);
         }
       });
     });
-    //create Scan Groups here
+    //  create Scan Groups here
     Utils.createScanGroups(Utils.assignScanGroup(cleanCoils,this.options.groupOptions.coilReadLength,"Bit"));
   }
   configureModbusHoldingRegisterCollections(){
-    //make two Scan Groups, one that hold integers and one that holds floating points.
-    //Get a list of all Holding Registers (neeed address, tag_id, tag_param)
-    let allHoldingRegisters = Tags.find({"params.table": "Holding Register"}, {fields: {'tag': 1,'params': 1}}).fetch();
-    //New array just containg the Integers and their addesses
-    let cleanIntegers = new Array();
-    //New array just containing the Floating Points and their addresses.
-    let cleanFloats = new Array();
+    //  make two Scan Groups, one that hold integers and one that holds floating points.
+    //  Get a list of all Holding Registers (neeed address, tag_id, tag_param)
+    let allHoldingRegisters = Tags.find({"params.table": "Holding Register"}, {fields: {'tag': 1, 'params': 1}}).fetch();
+    //  New array just containg the Integers and their addesses
+    let cleanIntegers = [];
+    //  New array just containing the Floating Points and their addresses.
+    let cleanFloats = [];
     _.each(allHoldingRegisters, (tag) => {
       _.each(tag.params, (param) => {
-        if (param.table == "Holding Register") {
+        if (param.table === "Holding Register") {
           let tag_param = tag.tag + '_' + param.name;
           let new_number = {tagid: tag._id,tag_param: tag_param,address: param.address};
           if(param.dataType == "Integer"){
@@ -228,11 +225,11 @@ Mmodbus = class Mmodbus {
     this.logger.Mmodbus_debug("Address " + address + ' and length ' + quantity);
     transaction = {};
     switch (scanGroup.dataType) {
-      case "Bit":
-        transaction = self.master.readCoils(address, quantity);
-        break;
+    case "Bit":
+    transaction = self.master.readCoils(address, quantity);
+            break;
       case "Integer":
-        transaction = self.master.readHoldingRegisters(address, quantity);
+          transaction = self.master.readHoldingRegisters(address, quantity);
         break;
       case "Floating Point":
         transaction = self.master.readHoldingRegisters(address, quantity);
@@ -244,7 +241,7 @@ Mmodbus = class Mmodbus {
     Utils.syncTransactionOn(transaction,'timeout', function() {
       this.logger.Mmodbus_info('[transaction#timeout] Scan Group #:', scanGroup.groupNum);
     });
-    //TODO What should I really do on error here?
+    //  TODO What should I really do on error here?
     Utils.syncTransactionOn(transaction,'error', function(err) {
       self.logger.Mmodbus_error(`[transaction#error] ${scanGroup.groupNum} of DataType ${scanGroup.dataType}` +  'Err Msg: ' + err.message);
       //stopAllScanning();
@@ -373,7 +370,7 @@ Mmodbus = class Mmodbus {
     let self = this;
     //console.log(scanGroup);
     this.logger.Mmodbus_debug("Scanning Group # " +scanGroup.groupNum + ' of Data Type ' + scanGroup.dataType);
-    
+
     let quantity = scanGroup.quantity;
     this.logger.Mmodbus_debug("Address " + address + ' and length ' + quantity);
     transaction = {};
