@@ -66,17 +66,17 @@ Mmodbus = class Mmodbus {
   createMasterEvents() {
     let self = this;
     Utils.syncMasterOn(self, 'error', (err) => {
-      self.logger.Mmodbus_error('[master#error] %s', err.message);
+      self.logger.mmodbus_error('[master#error] %s', err.message);
       self.stopAllScanning();
     });
     Utils.syncMasterOn(self, 'disconnected', () => {
-      self.logger.Mmodbus_warn('[master#disconnected]');
+      self.logger.mmodbus_warn('[master#disconnected]');
       self.stopAllScanning();
     });
     //  asyncMaster('connected',function(){console.log('test');});
     Utils.syncMasterOn(self, 'connected', () => {
-      self.logger.Mmodbus_info('[master#connected]');
-      self.logger.Mmodbus_info('Beggining Scanning of Coils');
+      self.logger.mmodbus_info('[master#connected]');
+      self.logger.mmodbus_info('Beggining Scanning of Coils');
       self.startAllScanning();
     });
   }
@@ -188,14 +188,14 @@ Mmodbus = class Mmodbus {
 
   startAllScanning() {
     if (this.modbus_timer === null) {
-      this.logger.Mmodbus_info('Creating Scan timer for scan groups');
+      this.logger.mmodbus_info('Creating Scan timer for scan groups');
       this.modbus_timer = Meteor.setInterval(this.scanAllGroups.bind(this), this.options.scanInterval);
     } else {
-      this.logger.Mmodbus_info('Timer already exists for scan groups');
+      this.logger.mmodbus_info('Timer already exists for scan groups');
     }
   }
   stopAllScanning() {
-    this.logger.Mmodbus_warn('Stopping all scanning');
+    this.logger.mmodbus_warn('Stopping all scanning');
     if (this.modbus_timer !== null) {
       Meteor.clearInterval(this.modbus_timer);
       //  set timer to null indicating it is no longer active
@@ -204,12 +204,12 @@ Mmodbus = class Mmodbus {
   }
   scanAllGroups() {
     let self = this;
-    self.logger.Mmodbus_debug('Begin Scanning All Groups');
+    self.logger.mmodbus_debug('Begin Scanning All Groups');
 
     var scanGroups = ScanGroups.find({
       "active": true
     }).fetch();
-    self.logger.Mmodbus_debug('scanGroups Array:', scanGroups);
+    self.logger.mmodbus_debug('scanGroups Array:', scanGroups);
     _.each(scanGroups, function(myGroup) {
       self.scanGroup(myGroup);
     });
@@ -218,10 +218,10 @@ Mmodbus = class Mmodbus {
   scanGroup(scanGroup) {
     let self = this;
     //  console.log(scanGroup);
-    this.logger.Mmodbus_debug("Scanning Group # " +scanGroup.groupNum + ' of Data Type ' + scanGroup.dataType);
+    this.logger.mmodbus_debug("Scanning Group # " + scanGroup.groupNum + ' of Data Type ' + scanGroup.dataType);
     let address = scanGroup.startAddress;
     let quantity = scanGroup.quantity;
-    this.logger.Mmodbus_debug("Address " + address + ' and length ' + quantity);
+    this.logger.mmodbus_debug("Address " + address + ' and length ' + quantity);
     transaction = {};
     switch (scanGroup.dataType) {
     case "Bit":
@@ -234,28 +234,28 @@ Mmodbus = class Mmodbus {
       transaction = self.master.readHoldingRegisters(address, quantity);
       break;
     default:
-      self.logger.Mmodbus_warn("ScanGroup ID: " + scanGroup.groupNum + " has incorrect Data Type");
+      self.logger.mmodbus_warn("ScanGroup ID: " + scanGroup.groupNum + " has incorrect Data Type");
     }
     transaction.setMaxRetries(0);
     Utils.syncTransactionOn(transaction, 'timeout', function() {
-      self.logger.Mmodbus_info('[transaction#timeout] Scan Group #:', scanGroup.groupNum);
+      self.logger.mmodbus_info('[transaction#timeout] Scan Group #:', scanGroup.groupNum);
     });
     //  TODO What should I really do on error here?
     Utils.syncTransactionOn(transaction, 'error', function(err) {
-      self.logger.Mmodbus_error(`[transaction#error] ${scanGroup.groupNum} of DataType ${scanGroup.dataType}` +  'Err Msg: ' + err.message);
+      self.logger.mmodbus_error(`[transaction#error] ${scanGroup.groupNum} of DataType ${scanGroup.dataType}` + 'Err Msg: ' + err.message);
       //  stopAllScanning();
     });
     Utils.syncTransactionOn(transaction, 'complete', function(err, response) {
       //  if an error occurs, could be a timeout
       if (err) {
-        self.logger.Mmodbus_warn(`Error Message on Complete w/ ${scanGroup.groupNum} of DataType ${scanGroup.dataType}`)
-        self.logger.Mmodbus_warn(err.message);
+        self.logger.mmodbus_warn(`Error Message on Complete w/ ${scanGroup.groupNum} of DataType ${scanGroup.dataType}`);
+        self.logger.mmodbus_warn(err.message);
       } else if (response.isException()) {
-        self.logger.Mmodbus_error(`Got an Exception Message. Scan Group #: ${scanGroup.groupNum} of DataType ${scanGroup.dataType}`)
-        self.logger.Mmodbus_error(response.toString());
+        self.logger.mmodbus_error(`Got an Exception Message. Scan Group #: ${scanGroup.groupNum} of DataType ${scanGroup.dataType}`);
+        self.logger.mmodbus_error(response.toString());
         self.reportModbusError(scanGroup);
       } else {
-        self.logger.Mmodbus_debug(`Succesfully completed scanning of Scan Group #: ${scanGroup.groupNum} of DataType ${scanGroup.dataType}`);
+        self.logger.mmodbus_debug(`Succesfully completed scanning of Scan Group #: ${scanGroup.groupNum} of DataType ${scanGroup.dataType}`);
         //  update LiveTags from the response and scanGroup
         self.handleRespone(response, scanGroup);
       }
@@ -274,15 +274,15 @@ Mmodbus = class Mmodbus {
     let data;
 
     data = (scanGroup.dataType === "Bit") ? response.getStates().map(Number) : response.getValues();
-    //  self.logger.Mmodbus_debug('Scan Group Data for Group#:', scanGroup.table,scanGroup.groupNum);
+    //  self.logger.mmodbus_debug('Scan Group Data for Group#:', scanGroup.table,scanGroup.groupNum);
     //  console.log(data);
-    //  self.logger.Mmodbus_debug('test', data);
+    //  self.logger.mmodbus_debug('test', data);
     _.each(scanGroup.tags, (tag)=> {
       var index = tag.address - scanGroup.startAddress;
       var tagName = tag.tag_param;
       var newValue = (scanGroup.dataType === "Bit") ? data[index] : self.readTypedValue(scanGroup.dataType, scanGroup.startAddress, tag, data);
       //  console.log('Returned new Value: ',newValue);
-      self.logger.Mmodbus_silly('Updating Tag ' + tagName + ' at address ' + tag.address + ' to value of ' + newValue);
+      self.logger.mmodbus_silly('Updating Tag ' + tagName + ' at address ' + tag.address + ' to value of ' + newValue);
       LiveTags.update({tag_param: tagName}, {$set: {value: newValue, quality: true, modifiedAt: new Date()}});
     });
   }
@@ -297,9 +297,9 @@ Mmodbus = class Mmodbus {
       _id: scanGroup._id
     }).fetch()[0].errorCount;
     errors = errors + 1;
-    self.logger.Mmodbus_warn('Scan Group #' + scanGroup.groupNum + ' is reporting an error. They currently have ' + errors + ' errors');
+    self.logger.mmodbus_warn('Scan Group #' + scanGroup.groupNum + ' is reporting an error. They currently have ' + errors + ' errors');
     if (errors > self.options.scanOptions.defaultMaxRetries) {
-      self.logger.Mmodbus_warn('Exceeded Max Retries, disabling group #', scanGroup.groupNum);
+      self.logger.mmodbus_warn('Exceeded Max Retries, disabling group #', scanGroup.groupNum);
       ScanGroups.update({_id: scanGroup._id}, {$set: {active: false}});
     }
     ScanGroups.update({_id: scanGroup._id}, {$inc: {errorCount: 1}});
@@ -317,10 +317,10 @@ Mmodbus = class Mmodbus {
    *
    *@return {Number} - Returns the number from the buffer
    */
-  readTypedValue(dataType,startingAddress, tag, buffer) {
+  readTypedValue(dataType, startingAddress, tag, buffer) {
     let offset = (tag.address - startingAddress) * 2;
-    //  self.logger.Mmodbus_debug("reading Tag.param",tag.tag_param);
-    //  self.logger.Mmodbus_debug("Offset = ", offset)
+    //  self.logger.mmodbus_debug("reading Tag.param",tag.tag_param);
+    //  self.logger.mmodbus_debug("Offset = ", offset)
     switch (dataType) {
     case 'double':
       return buffer.readDoubleBE(offset, true);
@@ -344,10 +344,10 @@ Mmodbus = class Mmodbus {
   }
   updateValue(tagParam, value) {
     [tag, param, ...rest] = tagParam.split('_');
-    if (this.isEmpty(tag) || this.isEmpty(param)) {
+    if (Utils.isEmpty(tag) || Utils.isEmpty(param)) {
       return {error: `${tagParam} is a malformed tag. Should be of form tag_param`, success: false};
     }
-    self.logger.Mmodbus_debug(`Tag : ${tag} Param: ${param} Rest: ${rest}`);
+    self.logger.mmodbus_debug(`Tag : ${tag} Param: ${param} Rest: ${rest}`);
     let tagObj = Tags.findOne({tag: tag});
     if (tagObj === undefined) {
       return {error: `${tagParam} does not exist in database`, success: false};
@@ -360,61 +360,9 @@ Mmodbus = class Mmodbus {
       return {error: `Value: ${value} is not valid.  Must be a number`, success: false};
     }
     this.modbusWrite(tagParam, value, paramObj.table, paramObj.dataType, paramObj.address);
-    self.logger.Mmodbus_debug(`tagObj.params: ${JSON.stringify(paramObj, null, 4)}`);
-
+    self.logger.mmodbus_debug(`tagObj.params: ${JSON.stringify(paramObj, null, 4)}`);
   }
-  modbusWrite(tag_param,table,dataType,address){
-    let self = this;
-    //console.log(scanGroup);
-    this.logger.Mmodbus_debug("Scanning Group # " +scanGroup.groupNum + ' of Data Type ' + scanGroup.dataType);
-
-    let quantity = scanGroup.quantity;
-    this.logger.Mmodbus_debug("Address " + address + ' and length ' + quantity);
-    transaction = {};
-    switch (scanGroup.dataType) {
-      case "Bit":
-        transaction = self.master.readCoils(address, quantity);
-        break;
-      case "Integer":
-        transaction = self.master.readHoldingRegisters(address, quantity);
-        break;
-      case "Floating Point":
-        transaction = self.master.readHoldingRegisters(address, quantity);
-        break;
-      default:
-        self.logger.Mmodbus_warn("ScanGroup ID: " + scanGroup.groupNum + " has incorrect Data Type");
-    }
-    transaction.setMaxRetries(0);
-    Utils.syncTransactionOn(transaction,'timeout', function() {
-      this.logger.Mmodbus_info('[transaction#timeout] Scan Group #:', scanGroup.groupNum);
-    });
-    //TODO What should I really do on error here?
-    Utils.syncTransactionOn(transaction,'error', function(err) {
-      self.logger.Mmodbus_error(`[transaction#error] ${scanGroup.groupNum} of DataType ${scanGroup.dataType}` +  'Err Msg: ' + err.message);
-      //stopAllScanning();
-    });
-    Utils.syncTransactionOn(transaction,'complete', function(err, response) {
-      //if an error occurs, could be a timeout
-      if (err) {
-        self.logger.Mmodbus_warn(`Error Message on Complete w/ ${scanGroup.groupNum} of DataType ${scanGroup.dataType}`)
-        self.logger.Mmodbus_warn(err.message);
-
-      } else
-      if (response.isException()) {
-        self.logger.Mmodbus_error(`Got an Exception Message. Scan Group #: ${scanGroup.groupNum} of DataType ${scanGroup.dataType}`)
-        self.logger.Mmodbus_error(response.toString());
-        self.reportModbusError(scanGroup);
-      } else {
-        self.logger.Mmodbus_debug(`Succesfully completed scanning of Scan Group #: ${scanGroup.groupNum} of DataType ${scanGroup.dataType}`);
-        //update LiveTags from the response and scanGroup
-        self.handleRespone(response,scanGroup);
-      }
-    });
-
-
+  modbusWrite(tagParam, table, dataType, address) {
+    test = 1;
   }
-  isEmpty(str){
-    return (!str || 0 === str.length);
-  }
-
-}
+};

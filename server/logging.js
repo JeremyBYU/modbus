@@ -1,25 +1,25 @@
 let Winston = Npm.require('winston');
 let MongoDB = Npm.require('winston-mongodb').MongoDB;
-//let winston-mondgb = Npm.require('winston-mongodb');
+//  let winston-mondgb = Npm.require('winston-mongodb');
 let myCustomLevels = {
   levels: {
-    Mmodbus_silly: 0,
-    Mmodbus_debug: 1,
-    Mmodbus_info: 2,
-    Mmodbus_warn: 3,
-    Mmodbus_error: 4
+    mmodbus_silly: 0,
+    mmodbus_debug: 1,
+    mmodbus_info: 2,
+    mmodbus_warn: 3,
+    mmodbus_error: 4
   },
   colors: {
-    Mmodbus_sily: 'green',
-    Mmodbus_debug: 'green',
-    Mmodbus_info: 'blue',
-    Mmodbus_warn: 'yellow',
-    Mmodbus_error: 'red'
+    mmodbus_sily: 'green',
+    mmodbus_debug: 'green',
+    mmodbus_info: 'blue',
+    mmodbus_warn: 'yellow',
+    mmodbus_error: 'red'
   }
 };
 let mongoOptions = {
   handleExceptions: false,
-  level: 'Mmodbus_debug',
+  level: 'mmodbus_debug',
   levels: myCustomLevels.levels,
   colors: myCustomLevels.colors,
   db: process.env.MONGO_URL,
@@ -27,14 +27,14 @@ let mongoOptions = {
   collection: 'mmodbus_log',
   errorTimeout: 10000,
   timeout: 50000
-  };
+};
 let consoleOptions = {
-  level: 'Mmodbus_debug',
+  level: 'mmodbus_debug',
   colorize: true,
   levels: myCustomLevels.levels,
   colors: myCustomLevels.colors
 };
 
-Logger = new (Winston.Logger)({levels: myCustomLevels.levels,colors:myCustomLevels.colors});
-Logger.add(MongoDB,mongoOptions);
-Logger.add(Winston.transports.Console,consoleOptions);
+Logger = new (Winston.Logger)({levels: myCustomLevels.levels, colors: myCustomLevels.colors});
+Logger.add(MongoDB, mongoOptions);
+Logger.add(Winston.transports.Console, consoleOptions);
