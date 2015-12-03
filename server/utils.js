@@ -144,13 +144,17 @@ let createScanGroups = (scanGroups) =>{
   //   ScanGroups.insert(scanGroup);
   // });
 }
+let isNumeric = (n) => {
+  return !isNaN(parseFloat(n)) && isFinite(n);
+}
 Utils = {
   syncMasterOn: syncMasterOn,
   assignScanGroup: assignScanGroup,
   createScanGroups: createScanGroups,
   createMasterConfiguration: createMasterConfiguration,
   syncTransactionOn: syncTransactionOn,
-  getRegisterQuantityFromType: getRegisterQuantityFromType
+  getRegisterQuantityFromType: getRegisterQuantityFromType,
+  isNumeric: isNumeric
 
 };
 Mmodbus_Utils.Utils = Utils;
