@@ -84,7 +84,7 @@ Upon instantiation from ```new Mmodbus``` the following occurs:
 ### Collections
 
 | Mongo Collection Name | Global Variable Access            | Data Persists between Startup?  | Purpose                                                             |
-| :------------         |:----------------                  | -----:                          | : ----------------------------------------------------------------- |
+| ------------         |----------------                  | -----                          |  ----------------------------------------------------------------- |
 | mmodbus_tags          | MmodusUtils.collections.Tags      | Yes                             | Contains all tags and configuration (think of this as an offline db)|
 | mmobdus_liveTags      | MmodusUtils.collections.LiveTags  | No                              | Contains the live values of the tags from scanning (live db)        |
 | mmobdus_scanGroups    | MmodusUtils.collections.ScanGroups| No                              | Groups continuous tag addresses into scan groups                    |
