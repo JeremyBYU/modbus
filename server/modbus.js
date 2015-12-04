@@ -14,28 +14,48 @@ Mmodbus = class Mmodbus {
    * @returns {Object} Provdes MModbus object
    */
   constructor({
-    scanOptions: {supressTransationErrors = true, retryOnException = false, maxConcurrentRequests = 1, defaultUnit = 1, defaultMaxRetries = 1, defaultTimeout = 1000} = {},
-    rtu: { serialPort = '/dev/ttyACM0', baudRate = 9600, type = 'serial'} = {},
-    ip: { type = 'tcp', host = '127.0.0.1', port = 502, autoConnect = true, autoReconnect = true, minConnectTime = 2500, maxReconnectTime = 5000} = {},
-    groupOptions: {coilReadLength = 25, holdingRegisterLength = 25, maxCoilGroups = 5, maxHoldingRegisterGroups = 10} = {},
+    scanOptions: {
+      supressTransationErrors = true, retryOnException = false, maxConcurrentRequests = 1, defaultUnit = 1, defaultMaxRetries = 1, defaultTimeout = 1000
+    } = {},
+    rtu: {
+      serialPort = '/dev/ttyACM0', baudRate = 9600, type = 'serial'
+    } = {},
+    ip: {
+      type = 'tcp', host = '127.0.0.1', port = 502, autoConnect = true, autoReconnect = true, minConnectTime = 2500, maxReconnectTime = 5000
+    } = {},
+    groupOptions: {
+      coilReadLength = 25, holdingRegisterLength = 25, maxCoilGroups = 5, maxHoldingRegisterGroups = 10
+    } = {},
     useIP = true,
     scanInterval = 5000
   }) {
     //  Options Object
     this.options = {};
     //  Options for H5 Modbus
-    this.options.scanOptions = {supressTransationErrors, retryOnException, maxConcurrentRequests, defaultUnit, defaultMaxRetries, defaultTimeout};
-    this.options.rtu = {serialPort, baudRate, type};
-    this.options.ip = {type, host, port, autoConnect, autoReconnect, minConnectTime, maxReconnectTime};
+    this.options.scanOptions = {
+      supressTransationErrors, retryOnException, maxConcurrentRequests, defaultUnit, defaultMaxRetries, defaultTimeout
+    };
+    this.options.rtu = {
+      serialPort, baudRate, type
+    };
+    this.options.ip = {
+      type, host, port, autoConnect, autoReconnect, minConnectTime, maxReconnectTime
+    };
     //  Options for MModbus
-    this.options.groupOptions = {coilReadLength, holdingRegisterLength, maxCoilGroups, maxHoldingRegisterGroups};
+    this.options.groupOptions = {
+      coilReadLength, holdingRegisterLength, maxCoilGroups, maxHoldingRegisterGroups
+    };
     this.options.useIP = useIP;
     this.options.scanInterval = scanInterval;
 
     //  create logger
     this.logger = Logger;
     //  Add Colleciton Reference
-    this.collections = {LiveTags: LiveTags, ScanGrups: ScanGroups, Tags: Tags};
+    this.collections = {
+      LiveTags: LiveTags,
+      ScanGrups: ScanGroups,
+      Tags: Tags
+    };
     //  console.log(this.options);
     //  console.log(this.options.scanOptions);
     //  placeholder for the Meteor Timers
@@ -144,7 +164,14 @@ Mmodbus = class Mmodbus {
 */
   configureModbusCoilCollections() {
     //  Get a list of all coils (neeed address, tag_id, tag_param)
-    let allCoils = Tags.find({"params.table": "Coil"}, {fields: {'tag': 1, 'params': 1}}).fetch();
+    let allCoils = Tags.find({
+      "params.table": "Coil"
+    }, {
+      fields: {
+        'tag': 1,
+        'params': 1
+      }
+    }).fetch();
     //  unfortunately this new Array has more than just coils, will need to clean it up
     //  New array just containg the coils and their addess.
     let cleanCoils = [];
@@ -152,7 +179,11 @@ Mmodbus = class Mmodbus {
       _.each(tag.params, (param) => {
         if (param.table === "Coil") {
           let tagParam = tag.tag + '_' + param.name;
-          let newCoil = {tagid: tag._id, tag_param: tagParam, address: param.address};
+          let newCoil = {
+            tagid: tag._id,
+            tag_param: tagParam,
+            address: param.address
+          };
           cleanCoils.push(newCoil);
         }
       });
@@ -163,7 +194,14 @@ Mmodbus = class Mmodbus {
   configureModbusHoldingRegisterCollections() {
     //  make two Scan Groups, one that hold integers and one that holds floating points.
     //  Get a list of all Holding Registers (neeed address, tag_id, tag_param)
-    let allHoldingRegisters = Tags.find({"params.table": "Holding Register"}, {fields: {'tag': 1, 'params': 1}}).fetch();
+    let allHoldingRegisters = Tags.find({
+      "params.table": "Holding Register"
+    }, {
+      fields: {
+        'tag': 1,
+        'params': 1
+      }
+    }).fetch();
     //  New array just containg the Integers and their addesses
     let cleanIntegers = [];
     //  New array just containing the Floating Points and their addresses.
@@ -172,7 +210,11 @@ Mmodbus = class Mmodbus {
       _.each(tag.params, (param) => {
         if (param.table === "Holding Register") {
           let tagParam = tag.tag + '_' + param.name;
-          let newNumber = {tagid: tag._id, tag_param: tagParam, address: param.address};
+          let newNumber = {
+            tagid: tag._id,
+            tag_param: tagParam,
+            address: param.address
+          };
           if (param.dataType === "Integer") {
             cleanIntegers.push(newNumber);
           } else if (param.dataType === "Floating Point") {
@@ -218,23 +260,23 @@ Mmodbus = class Mmodbus {
   scanGroup(scanGroup) {
     let self = this;
     //  console.log(scanGroup);
-    this.logger.mmodbus_debug("Scanning Group # " + scanGroup.groupNum + ' of Data Type ' + scanGroup.dataType);
+    self.logger.mmodbus_debug("Scanning Group # " + scanGroup.groupNum + ' of Data Type ' + scanGroup.dataType);
     let address = scanGroup.startAddress;
     let quantity = scanGroup.quantity;
-    this.logger.mmodbus_debug("Address " + address + ' and length ' + quantity);
+    self.logger.mmodbus_debug("Address " + address + ' and length ' + quantity);
     transaction = {};
     switch (scanGroup.dataType) {
-    case "Bit":
-      transaction = self.master.readCoils(address, quantity);
-      break;
-    case "Integer":
-      transaction = self.master.readHoldingRegisters(address, quantity);
-      break;
-    case "Floating Point":
-      transaction = self.master.readHoldingRegisters(address, quantity);
-      break;
-    default:
-      self.logger.mmodbus_warn("ScanGroup ID: " + scanGroup.groupNum + " has incorrect Data Type");
+      case "Bit":
+        transaction = self.master.readCoils(address, quantity);
+        break;
+      case "Integer":
+        transaction = self.master.readHoldingRegisters(address, quantity);
+        break;
+      case "Floating Point":
+        transaction = self.master.readHoldingRegisters(address, quantity);
+        break;
+      default:
+        self.logger.mmodbus_warn("ScanGroup ID: " + scanGroup.groupNum + " has incorrect Data Type");
     }
     transaction.setMaxRetries(0);
     Utils.syncTransactionOn(transaction, 'timeout', function() {
@@ -261,14 +303,14 @@ Mmodbus = class Mmodbus {
       }
     });
   }
-  /**
-   * This funciton will hande a response from a transaction. The updated tag data is evaluated from the response
-   * and the MongoDB collection LiveTags is updated
-   * @param {Object} response - This is Response object from a transaction.
-   *
-   * @param {Object} scanGroup - This is the scanGroup object for the transaction
-   *
-   */
+    /**
+     * This funciton will hande a response from a transaction. The updated tag data is evaluated from the response
+     * and the MongoDB collection LiveTags is updated
+     * @param {Object} response - This is Response object from a transaction.
+     *
+     * @param {Object} scanGroup - This is the scanGroup object for the transaction
+     *
+     */
   handleRespone(response, scanGroup) {
     let self = this;
     let data;
@@ -277,20 +319,28 @@ Mmodbus = class Mmodbus {
     //  self.logger.mmodbus_debug('Scan Group Data for Group#:', scanGroup.table,scanGroup.groupNum);
     //  console.log(data);
     //  self.logger.mmodbus_debug('test', data);
-    _.each(scanGroup.tags, (tag)=> {
+    _.each(scanGroup.tags, (tag) => {
       var index = tag.address - scanGroup.startAddress;
       var tagName = tag.tag_param;
       var newValue = (scanGroup.dataType === "Bit") ? data[index] : self.readTypedValue(scanGroup.dataType, scanGroup.startAddress, tag, data);
       //  console.log('Returned new Value: ',newValue);
       self.logger.mmodbus_silly('Updating Tag ' + tagName + ' at address ' + tag.address + ' to value of ' + newValue);
-      LiveTags.update({tag_param: tagName}, {$set: {value: newValue, quality: true, modifiedAt: new Date()}});
+      LiveTags.update({
+        tag_param: tagName
+      }, {
+        $set: {
+          value: newValue,
+          quality: true,
+          modifiedAt: new Date()
+        }
+      });
     });
   }
-  /**
-   * This will function will report a Modbus error on scan group.  If too many erros occur, the scan group will be
-   * made inactive.
-   *
-   */
+    /**
+     * This will function will report a Modbus error on scan group.  If too many erros occur, the scan group will be
+     * made inactive.
+     *
+     */
   reportModbusError(scanGroup) {
     let self = this;
     let errors = ScanGroups.find({
@@ -300,69 +350,132 @@ Mmodbus = class Mmodbus {
     self.logger.mmodbus_warn('Scan Group #' + scanGroup.groupNum + ' is reporting an error. They currently have ' + errors + ' errors');
     if (errors > self.options.scanOptions.defaultMaxRetries) {
       self.logger.mmodbus_warn('Exceeded Max Retries, disabling group #', scanGroup.groupNum);
-      ScanGroups.update({_id: scanGroup._id}, {$set: {active: false}});
+      ScanGroups.update({
+        _id: scanGroup._id
+      }, {
+        $set: {
+          active: false
+        }
+      });
     }
-    ScanGroups.update({_id: scanGroup._id}, {$inc: {errorCount: 1}});
+    ScanGroups.update({
+      _id: scanGroup._id
+    }, {
+      $inc: {
+        errorCount: 1
+      }
+    });
   }
-  /**
-   * Read data from a buffer based upon the data type
-   *
-   * @param {String} dataType - The dataType repersents the datatype, e.g. Integer
-   *
-   * @param {Number} startingAddress - The address to begin reading with in the buffer
-   *
-   * @param {Object} tag - Tag object
-   *
-   * @param {BUFFER} buffer - Buffer Object, from response of transaction
-   *
-   *@return {Number} - Returns the number from the buffer
-   */
+    /**
+     * Read data from a buffer based upon the data type
+     *
+     * @param {String} dataType - The dataType repersents the datatype, e.g. Integer
+     *
+     * @param {Number} startingAddress - The address to begin reading with in the buffer
+     *
+     * @param {Object} tag - Tag object
+     *
+     * @param {BUFFER} buffer - Buffer Object, from response of transaction
+     *
+     *@return {Number} - Returns the number from the buffer
+     */
   readTypedValue(dataType, startingAddress, tag, buffer) {
     let offset = (tag.address - startingAddress) * 2;
     //  self.logger.mmodbus_debug("reading Tag.param",tag.tag_param);
     //  self.logger.mmodbus_debug("Offset = ", offset)
     switch (dataType) {
-    case 'double':
-      return buffer.readDoubleBE(offset, true);
-    case 'Floating Point':
-      return buffer.readFloatBE(offset, true);
-    case 'Integer2':
-      return buffer.readUInt32BE(offset, true);
-    case 'Integer1':
-      return buffer.readInt32BE(offset, true);
-    case 'Integer':
-      return buffer.readUInt16BE(offset, true);
-    case 'int8':
-      return buffer.readInt16BE(offset, true);
-    case 'bool':
-      return buffer.readInt16BE(offset, true) === 0 ? 0 : 1;
-    case 'string':
-      return buffer.toString();
-    default:
-      return buffer.readUInt16BE(offset, true);
+      case 'double':
+        return buffer.readDoubleBE(offset, true);
+      case 'Floating Point':
+        return buffer.readFloatBE(offset, true);
+      case 'Integer2':
+        return buffer.readUInt32BE(offset, true);
+      case 'Integer1':
+        return buffer.readInt32BE(offset, true);
+      case 'Integer':
+        return buffer.readUInt16BE(offset, true);
+      case 'int8':
+        return buffer.readInt16BE(offset, true);
+      case 'bool':
+        return buffer.readInt16BE(offset, true) === 0 ? 0 : 1;
+      case 'string':
+        return buffer.toString();
+      default:
+        return buffer.readUInt16BE(offset, true);
     }
   }
   updateValue(tagParam, value) {
+    let self = this;
     [tag, param, ...rest] = tagParam.split('_');
     if (Utils.isEmpty(tag) || Utils.isEmpty(param)) {
-      return {error: `${tagParam} is a malformed tag. Should be of form tag_param`, success: false};
+      return {
+        error: `${tagParam} is a malformed tag. Should be of form tag_param`,
+        success: false
+      };
     }
     self.logger.mmodbus_debug(`Tag : ${tag} Param: ${param} Rest: ${rest}`);
-    let tagObj = Tags.findOne({tag: tag});
+    let tagObj = Tags.findOne({
+      tag: tag
+    });
     if (tagObj === undefined) {
-      return {error: `${tagParam} does not exist in database`, success: false};
+      return {
+        error: `${tagParam} does not exist in database`,
+        success: false
+      };
     }
-    paramObj = _.findWhere(tagObj.params, {name: param});
+    paramObj = _.findWhere(tagObj.params, {
+      name: param
+    });
     if (paramObj === undefined) {
-      return {error: `Tag ${tag} is valid, but param ${param} is not valid for this tag`, success: false};
+      return {
+        error: `Tag ${tag} is valid, but param ${param} is not valid for this tag`,
+        success: false
+      };
     }
     if (!Utils.isNumeric(value)) {
-      return {error: `Value: ${value} is not valid.  Must be a number`, success: false};
+      return {
+        error: `Value: ${value} is not valid.  Must be a number`,
+        success: false
+      };
     }
-    this.modbusWrite(tagParam, value, paramObj.table, paramObj.dataType, paramObj.address);
+    self.modbusWrite(tagParam, value, paramObj.table, paramObj.dataType, paramObj.address);
     self.logger.mmodbus_debug(`tagObj.params: ${JSON.stringify(paramObj, null, 4)}`);
   }
-  modbusWrite(tagParam, table, dataType, address) {
-    test = 1;
+  modbusWrite(tagParam, value, table, dataType, address) {
+    if (table === 'Coil') {
+      this.modbusWriteBit(tagParam, value, table, address);
+    } else if (table === 'Holding Register') {
+      this.modbusWriteHoldingRegister(tagParam, value, table, address);
+    } else {
+      return {
+        error: `Tag ${tagParam} does not have a valid Table`,
+        success: false
+      };
+    }
+  }
+  modbusWriteBit(tagParam, value, table, address) {
+    let master = this.master;
+    let self = this;
+    let boolValue = (value === 0) ? false : true;
+
+    master.writeSingleCoil(
+      address, boolValue, {
+        onComplete: function onWriteRegisterValueComplete(err, res) {
+          self.handleWriteResponse(this, err, res, tagParam, boolValue);
+        }
+      }
+    );
+  }
+  handleWriteResponse(transaction, err, res, tagParam, value) {
+    if (err) {
+      this.logger.mmodbus_error(`Recieved error while writing to ${tagParam}.  Error: ${err}`);
+      return;
+    }
+
+    if (res.isException()) {
+      this.logger.mmodbus_error(`Recieved exception while writing to ${tagParam}.  Exception: ${res.toString()}`);
+      return;
+    }
+    this.logger.mmodbus_debug(`Succesfully wrote value '${value}' to ${tagParam}`);
   }
 };
