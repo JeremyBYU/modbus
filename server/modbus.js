@@ -21,7 +21,7 @@ Mmodbus = class Mmodbus {
       serialPort = '/dev/ttyACM0', baudRate = 9600, type = 'serial'
     } = {},
     ip: {
-      type = 'tcp', host = '127.0.0.1', port = 502, autoConnect = true, autoReconnect = true, minConnectTime = 2500, maxReconnectTime = 5000
+      type = 'tcp', host = '127.0.0.1', port = 502, autoConnect = true, autoReconnect = true, minConnectTime = 2500, maxReconnectTime = 5000 // eslint-disable-line
     } = {},
     groupOptions: {
       coilReadLength = 25, holdingRegisterLength = 25, maxCoilGroups = 5, maxHoldingRegisterGroups = 10

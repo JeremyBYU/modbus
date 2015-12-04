@@ -23,7 +23,8 @@ TestFixture = class TestFixture {
     //  simple error check on quantities provided
     let tagArray = [];
     if (addressLow < 0 || quantity < 1 || quantity > 100000) {
-      console.log('Address must be greater than -1; quanity must be greater than 0 and less than 10,000');
+      console.log('Address must be greater than -1; quanity must be greater than 0 and less than 10,000'); // eslint-disable-line
+
       return [];
     }
     for (let i = addressLow; i < quantity; i++) {
@@ -66,7 +67,7 @@ TestFixture = class TestFixture {
      */
   generateFullTags(addressLow, quantity, table, dataType, continous = true, paramsPerTag = 1) {
     if (addressLow < 0 || quantity < 1 || quantity > 100000) {
-      console.log('Address must be greater than -1; quanity must be greater than 0 and less than 100,000');
+      console.log('Address must be greater than -1; quanity must be greater than 0 and less than 100,000'); // eslint-disable-line
       return [];
     }
     let tagArray = [];
