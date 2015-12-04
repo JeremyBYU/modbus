@@ -23,7 +23,7 @@ describe('Test Utility Functions, NonContinous tags', () => {
     this.continuous = false;
 
     this.scanTags = fixtures.generateScanTags(this.startAddress,this.quantity,this.dataType,this.continuous);
-    this.scanGroups = Mmodbus_Utils.Utils.assignScanGroup(this.scanTags,this.maxReadLength,this.dataType);
+    this.scanGroups = MmodbusUtils.funcs.assignScanGroup(this.scanTags,this.maxReadLength,this.dataType);
     //console.log(this.scanGroups);
   });
   it('Can assign scan groups', () => {
@@ -58,7 +58,7 @@ describe('Test Utility Functions, NonContinous tags', () => {
 describe('Test Mmodbus Class, No Modbus Simulator Needed', () => {
   beforeAll(()=> {
     //Ensure Tag Collection is empty
-    Mmodbus_Utils.collections.Tags.remove({});
+    MmodbusUtils.collections.Tags.remove({});
 
     this.startAddress = 0,
     this.quantity = tagQuantity,
@@ -73,11 +73,11 @@ describe('Test Mmodbus Class, No Modbus Simulator Needed', () => {
     this.fullTags = integerTags.concat(floatingPointTags).concat(coilTags);
 
     _.each(fullTags, (tag) => {
-      Mmodbus_Utils.collections.Tags.insert(tag);
+      MmodbusUtils.collections.Tags.insert(tag);
     });
   });
   it('Fixture generated correct tags and was able to store in Mmodbus Tag Collection (Schema Enforced)', () => {
-    let mongoTagCollection = Mmodbus_Utils.collections.Tags.find({}).fetch();
+    let mongoTagCollection = MmodbusUtils.collections.Tags.find({}).fetch();
     expect(mongoTagCollection.length).toBe(this.fullTags.length);
   });
   it('Can create Mmodbus Object by using NEW operator', () =>{
@@ -85,11 +85,11 @@ describe('Test Mmodbus Class, No Modbus Simulator Needed', () => {
     expect(this.mmodbus).toEqual(jasmine.any(Object));
   });
   it('Verify Scan Group Collection exists and has data', () =>{
-    let mongoScanGroupCollection = Mmodbus_Utils.collections.ScanGroups.find({}).fetch();
+    let mongoScanGroupCollection = MmodbusUtils.collections.ScanGroups.find({}).fetch();
     expect(mongoScanGroupCollection.length).toBeGreaterThan(0);
   });
   it('Verify Live Tags Collection exists and has data', () =>{
-    let mongoLiveTagsCollection = Mmodbus_Utils.collections.LiveTags.find({}).fetch();
+    let mongoLiveTagsCollection = MmodbusUtils.collections.LiveTags.find({}).fetch();
 
     expect(mongoLiveTagsCollection.length).toBeGreaterThan(0);
   });
@@ -102,7 +102,7 @@ describe('Test Mmodbus Class, No Modbus Simulator Needed', () => {
 describe('Test Mmodbus Class, Modbus Simulator Needed', () => {
   beforeAll((done)=> {
     //Ensure Tag Collection is empty
-    Mmodbus_Utils.collections.Tags.remove({});
+    MmodbusUtils.collections.Tags.remove({});
 
     this.startAddress = 0,
     this.quantity = tagQuantity,
@@ -117,7 +117,7 @@ describe('Test Mmodbus Class, Modbus Simulator Needed', () => {
     this.fullTags = integerTags.concat(floatingPointTags).concat(coilTags);
     //console.log(JSON.stringify(this.fullTags,null,4));
     _.each(this.fullTags, (tag) => {
-      Mmodbus_Utils.collections.Tags.insert(tag);
+      MmodbusUtils.collections.Tags.insert(tag);
     });
 
     this.startingTime = new Date();
@@ -136,7 +136,7 @@ describe('Test Mmodbus Class, Modbus Simulator Needed', () => {
   it('Live Tags are updating', () => {
     //console.log(this.startingTime);
     let updatedTime = new Date(this.startingTime.getTime() + 4000);
-    let mongoUpdatedLiveTagsCollection = Mmodbus_Utils.collections.LiveTags.find({modifiedAt:{$gte:updatedTime}}).fetch();
+    let mongoUpdatedLiveTagsCollection = MmodbusUtils.collections.LiveTags.find({modifiedAt:{$gte:updatedTime}}).fetch();
     // console.log(`Starting Time: ${this.startingTime}`);
     // console.log(`Updated Time: ${updatedTime}`);
     // console.log(JSON.stringify(mongoLiveTagsCollection,null,2));

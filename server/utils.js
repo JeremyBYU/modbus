@@ -54,14 +54,14 @@ let createMasterConfiguration = (self) => {
   return masterConfig;
 };
 
-let getRegisterQuantityFromType = (dataType) =>{
+let getRegisterQuantityFromType = (dataType) => {
   switch (dataType) {
-  case 'Floating Point':
-    return 2;
-  case 'Integer':
-    return 1;
-  default:
-    return 1;
+    case 'Floating Point':
+      return 2;
+    case 'Integer':
+      return 1;
+    default:
+      return 1;
   }
 };
 
@@ -145,7 +145,50 @@ let isNumeric = (n) => {
 let isEmpty = (str) => {
   return (!str || str.length === 0);
 };
-Utils = {
+let createValueBuffer = (dataType, value) => {
+  let valueBuffer;
+  switch (dataType) {
+    case 'double':
+      valueBuffer = new Buffer(8);
+      valueBuffer.writeDoubleBE(value, 0);
+      break;
+
+    case 'Floating Point':
+      valueBuffer = new Buffer(4);
+      valueBuffer.writeFloatBE(value, 0);
+      break;
+
+    case 'uint32':
+      valueBuffer = new Buffer(4);
+      valueBuffer.writeUInt32BE(Math.round(value), 0);
+      break;
+
+    case 'int32':
+      valueBuffer = new Buffer(4);
+      valueBuffer.writeInt32BE(Math.round(value), 0);
+      break;
+
+    case 'uint16':
+    case 'uint8':
+      valueBuffer = new Buffer(2);
+      valueBuffer.writeUInt16BE(Math.round(value), 0);
+      break;
+
+    case 'Integer':
+    case 'int8':
+      valueBuffer = new Buffer(2);
+      valueBuffer.writeInt16BE(Math.round(value), 0);
+      break;
+
+    default:
+      valueBuffer = new Buffer(2);
+      valueBuffer.writeInt16BE(value ? 1 : 0, 0);
+      break;
+  }
+
+  return valueBuffer;
+};
+let funcs = {
   syncMasterOn: syncMasterOn,
   assignScanGroup: assignScanGroup,
   createScanGroups: createScanGroups,
@@ -153,7 +196,8 @@ Utils = {
   syncTransactionOn: syncTransactionOn,
   getRegisterQuantityFromType: getRegisterQuantityFromType,
   isNumeric: isNumeric,
-  isEmpty: isEmpty
+  isEmpty: isEmpty,
+  createValueBuffer: createValueBuffer
 
 };
-Mmodbus_Utils.Utils = Utils;
+MmodbusUtils.funcs = funcs;

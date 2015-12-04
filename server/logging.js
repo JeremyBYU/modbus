@@ -10,7 +10,7 @@ let myCustomLevels = {
     mmodbus_error: 4
   },
   colors: {
-    mmodbus_sily: 'green',
+    mmodbus_silly: 'green',
     mmodbus_debug: 'green',
     mmodbus_info: 'blue',
     mmodbus_warn: 'yellow',
@@ -29,7 +29,7 @@ let mongoOptions = {
   timeout: 50000
 };
 let consoleOptions = {
-  level: 'mmodbus_debug',
+  level: 'mmodbus_silly',
   colorize: true,
   levels: myCustomLevels.levels,
   colors: myCustomLevels.colors

@@ -19,7 +19,7 @@
     * @returns {Array} tagArray - An array of Tag Obejcts
     */
    generateScanTags(addressLow,quantity,dataType,continous = true){
-     registersPerTag  = Mmodbus_Utils.Utils.getRegisterQuantityFromType(dataType)
+     registersPerTag  = MmodbusUtils.funcs.getRegisterQuantityFromType(dataType)
      //simple error check on quantities provided
      let tagArray = new Array();
      if(addressLow < 0 || quantity < 1 || quantity > 100000 ){
@@ -59,7 +59,7 @@
        return;
      }
      let tagArray = new Array();
-     let registerQuantity = Mmodbus_Utils.Utils.getRegisterQuantityFromType(dataType);
+     let registerQuantity = MmodbusUtils.funcs.getRegisterQuantityFromType(dataType);
      let tagObject = null;
      let lastAddress = addressLow;
      for(let i = addressLow;i < quantity + addressLow;i++){

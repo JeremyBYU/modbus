@@ -67,7 +67,7 @@ Mmodbus = class Mmodbus {
   */
   initialize() {
     let self = this;
-    let masterConfig = Utils.createMasterConfiguration(self);
+    let masterConfig = MmodbusUtils.funcs.createMasterConfiguration(self);
     //  console.log(masterConfig);
     self.master = modbus.createMaster(masterConfig);
 
@@ -85,16 +85,16 @@ Mmodbus = class Mmodbus {
   }
   createMasterEvents() {
     let self = this;
-    Utils.syncMasterOn(self, 'error', (err) => {
+    MmodbusUtils.funcs.syncMasterOn(self, 'error', (err) => {
       self.logger.mmodbus_error('[master#error] %s', err.message);
       self.stopAllScanning();
     });
-    Utils.syncMasterOn(self, 'disconnected', () => {
+    MmodbusUtils.funcs.syncMasterOn(self, 'disconnected', () => {
       self.logger.mmodbus_warn('[master#disconnected]');
       self.stopAllScanning();
     });
     //  asyncMaster('connected',function(){console.log('test');});
-    Utils.syncMasterOn(self, 'connected', () => {
+    MmodbusUtils.funcs.syncMasterOn(self, 'connected', () => {
       self.logger.mmodbus_info('[master#connected]');
       self.logger.mmodbus_info('Beggining Scanning of Coils');
       self.startAllScanning();
@@ -189,7 +189,7 @@ Mmodbus = class Mmodbus {
       });
     });
     //  create Scan Groups here
-    Utils.createScanGroups(Utils.assignScanGroup(cleanCoils, this.options.groupOptions.coilReadLength, "Bit"));
+    MmodbusUtils.funcs.createScanGroups(MmodbusUtils.funcs.assignScanGroup(cleanCoils, this.options.groupOptions.coilReadLength, "Bit"));
   }
   configureModbusHoldingRegisterCollections() {
     //  make two Scan Groups, one that hold integers and one that holds floating points.
@@ -224,8 +224,8 @@ Mmodbus = class Mmodbus {
       });
     });
     //  Create Scan Groups here
-    Utils.createScanGroups(Utils.assignScanGroup(cleanIntegers, this.options.groupOptions.holdingRegisterLength, "Integer"));
-    Utils.createScanGroups(Utils.assignScanGroup(cleanFloats, this.options.groupOptions.holdingRegisterLength, "Floating Point"));
+    MmodbusUtils.funcs.createScanGroups(MmodbusUtils.funcs.assignScanGroup(cleanIntegers, this.options.groupOptions.holdingRegisterLength, "Integer"));
+    MmodbusUtils.funcs.createScanGroups(MmodbusUtils.funcs.assignScanGroup(cleanFloats, this.options.groupOptions.holdingRegisterLength, "Floating Point"));
   }
 
   startAllScanning() {
@@ -279,15 +279,15 @@ Mmodbus = class Mmodbus {
         self.logger.mmodbus_warn("ScanGroup ID: " + scanGroup.groupNum + " has incorrect Data Type");
     }
     transaction.setMaxRetries(0);
-    Utils.syncTransactionOn(transaction, 'timeout', function() {
+    MmodbusUtils.funcs.syncTransactionOn(transaction, 'timeout', function() {
       self.logger.mmodbus_info('[transaction#timeout] Scan Group #:', scanGroup.groupNum);
     });
     //  TODO What should I really do on error here?
-    Utils.syncTransactionOn(transaction, 'error', function(err) {
+    MmodbusUtils.funcs.syncTransactionOn(transaction, 'error', function(err) {
       self.logger.mmodbus_error(`[transaction#error] ${scanGroup.groupNum} of DataType ${scanGroup.dataType}` + 'Err Msg: ' + err.message);
       //  stopAllScanning();
     });
-    Utils.syncTransactionOn(transaction, 'complete', function(err, response) {
+    MmodbusUtils.funcs.syncTransactionOn(transaction, 'complete', function(err, response) {
       //  if an error occurs, could be a timeout
       if (err) {
         self.logger.mmodbus_warn(`Error Message on Complete w/ ${scanGroup.groupNum} of DataType ${scanGroup.dataType}`);
@@ -407,7 +407,7 @@ Mmodbus = class Mmodbus {
   updateValue(tagParam, value) {
     let self = this;
     [tag, param, ...rest] = tagParam.split('_');
-    if (Utils.isEmpty(tag) || Utils.isEmpty(param)) {
+    if (MmodbusUtils.funcs.isEmpty(tag) || MmodbusUtils.funcs.isEmpty(param)) {
       return {
         error: `${tagParam} is a malformed tag. Should be of form tag_param`,
         success: false
@@ -432,7 +432,7 @@ Mmodbus = class Mmodbus {
         success: false
       };
     }
-    if (!Utils.isNumeric(value)) {
+    if (!MmodbusUtils.funcs.isNumeric(value)) {
       return {
         error: `Value: ${value} is not valid.  Must be a number`,
         success: false
@@ -445,7 +445,7 @@ Mmodbus = class Mmodbus {
     if (table === 'Coil') {
       this.modbusWriteBit(tagParam, value, table, address);
     } else if (table === 'Holding Register') {
-      this.modbusWriteHoldingRegister(tagParam, value, table, address);
+      this.modbusWriteHoldingRegister(tagParam, value, dataType, address);
     } else {
       return {
         error: `Tag ${tagParam} does not have a valid Table`,
@@ -460,8 +460,26 @@ Mmodbus = class Mmodbus {
 
     master.writeSingleCoil(
       address, boolValue, {
-        onComplete: function onWriteRegisterValueComplete(err, res) {
+        onComplete: function onWriteCoilValueComplete(err, res) {
           self.handleWriteResponse(this, err, res, tagParam, boolValue);
+        }
+      }
+    );
+  }
+  modbusWriteHoldingRegister(tagParam, value, dataType, address) {
+    let self = this;
+    let master = self.master;
+    let valueBuffer;
+    try {
+      valueBuffer = MmodbusUtils.funcs.createValueBuffer(dataType, value);
+    } catch (err) {
+      self.logger.mmodbus_error(`Could not convert value to a modbus writeable buffer for tag ${tagParam} with value ${value}. Err: ${err}`);
+    }
+    console.log(valueBuffer);
+    master.writeMultipleRegisters(
+      address, valueBuffer, {
+        onComplete: function onWriteRegisterValueComplete(err, res) {
+          self.handleWriteResponse(this, err, res, tagParam, value);
         }
       }
     );

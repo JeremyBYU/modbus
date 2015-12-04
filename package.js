@@ -34,7 +34,7 @@ Package.onUse(function(api) {
   api.addFiles('client/util.js', 'client');
 
   api.export('Mmodbus');
-  api.export('Mmodbus_Utils');
+  api.export('MmodbusUtils');
 });
 
 Package.onTest(function(api) {
