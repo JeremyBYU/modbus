@@ -251,7 +251,7 @@ Mmodbus = class Mmodbus {
     var scanGroups = ScanGroups.find({
       "active": true
     }).fetch();
-    self.logger.mmodbus_debug('scanGroups Array:', scanGroups);
+    self.logger.mmodbus_silly('scanGroups Array:', scanGroups);
     _.each(scanGroups, function(myGroup) {
       self.scanGroup(myGroup);
     });
@@ -260,10 +260,9 @@ Mmodbus = class Mmodbus {
   scanGroup(scanGroup) {
     let self = this;
     //  console.log(scanGroup);
-    self.logger.mmodbus_debug("Scanning Group # " + scanGroup.groupNum + ' of Data Type ' + scanGroup.dataType);
     let address = scanGroup.startAddress;
     let quantity = scanGroup.quantity;
-    self.logger.mmodbus_debug("Address " + address + ' and length ' + quantity);
+    self.logger.mmodbus_debug("Scanning Group # " + scanGroup.groupNum + ' of Data Type ' + scanGroup.dataType + ". Address " + address + ' and length ' + quantity);
     transaction = {};
     switch (scanGroup.dataType) {
       case "Bit":
@@ -475,7 +474,6 @@ Mmodbus = class Mmodbus {
     } catch (err) {
       self.logger.mmodbus_error(`Could not convert value to a modbus writeable buffer for tag ${tagParam} with value ${value}. Err: ${err}`);
     }
-    console.log(valueBuffer);
     master.writeMultipleRegisters(
       address, valueBuffer, {
         onComplete: function onWriteRegisterValueComplete(err, res) {

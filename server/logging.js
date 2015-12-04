@@ -29,7 +29,7 @@ let mongoOptions = {
   timeout: 50000
 };
 let consoleOptions = {
-  level: 'mmodbus_silly',
+  level: 'mmodbus_error',
   colorize: true,
   levels: myCustomLevels.levels,
   colors: myCustomLevels.colors
