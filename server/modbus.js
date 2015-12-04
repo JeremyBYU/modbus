@@ -1,4 +1,5 @@
-
+// TODO Clean up all logging. Make sure what is necessary is what is logged, be mindful of console and database.
+// TODO Benchmark Modbus Reads and Writes
 //  Required NPM Modules
 let modbus = Npm.require('h5.modbus');
 
