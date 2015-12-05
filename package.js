@@ -38,7 +38,7 @@ Package.onUse(function(api) {
 });
 
 Package.onTest(function(api) {
-  api.use(['ecmascript', 'underscore']);
+  api.use(['ecmascript@0.1.5', 'underscore']);
   api.use('tinytest');
 
   api.use('sanjo:jasmine@0.20.2');

@@ -464,6 +464,13 @@ Mmodbus = class Mmodbus {
       address, boolValue, {
         onComplete: function onWriteCoilValueComplete(err, res) {
           self.handleWriteResponse(this, err, res, tagParam, boolValue);
+        },
+        onError: function(err) {
+          self.logger.mmodbus_error(`[transaction#error] ${tagParam} failed write` + 'Err Msg: ' + err.message);
+          //  stopAllScanning();
+        },
+        onTimeout: function() {
+          self.logger.mmodbus_error(`[transaction#timeout]  ${tagParam} failed write`);
         }
       }
     );
@@ -481,6 +488,13 @@ Mmodbus = class Mmodbus {
       address, valueBuffer, {
         onComplete: function onWriteRegisterValueComplete(err, res) {
           self.handleWriteResponse(this, err, res, tagParam, value);
+        },
+        onError: function(err) {
+          self.logger.mmodbus_error(`[transaction#error] ${tagParam} failed` + 'Err Msg: ' + err.message);
+          //  stopAllScanning();
+        },
+        onTimeout: function() {
+          self.logger.mmodbus_error(`[transaction#timeout]  ${tagParam} failed write`);
         }
       }
     );

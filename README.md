@@ -3,7 +3,9 @@
 ## Summary
 This package adds the ability to communicate to modbus slaves (technically servers).  [Modbus](https://en.wikipedia.org/wiki/Modbus) is a protocol used in the controls industry that allows for open communication between different devices (PLCS [Programmable Logic Controllers], HMI's [Human Machine Interfaces], DCS [Distributable Control Systems], etc.). This package relies on an npm module called [h5.modbus](https://github.com/morkai/h5.modbus) that handles all the modbus communication.
 
-This package creates a special collection in the mongo database that holds 'Tags'. A tag describes where to read or write from a modbus slave. Simply fill the collection with tags and call ```new Mmodbus()``` to instatiate a modbus client that will handle reading and writing to your tags.
+This package creates a special collection in the mongo database that holds 'Tags'. A tag describes where to read or write from a modbus slave. Simply fill the collection with tags and call ```new Mmodbus()``` to instantiate a modbus client that will handle reading and writing to your tags.
+
+A sample project using this package can be found [here](#).  There is no view layer included with this package, allowing you to create whatever views you want with whatever technology (blaze, angular, react).  However I have created my own react view layer that you can also used called [Mmodbus-reactview](#)
 
 ### Tag Collection
 The main collection that you as a developer are concerned with is the 'mmodbus_tags' collection.  Here you describe the tags and parameters.
@@ -109,5 +111,4 @@ MMobdusUtils is another global variable that contains the following data
 ```
 MModbusUtils.collections // All the collections for the Mmodbus package
 MMobusUtils.funcs //  Helper Functions
-MmobdusUtils.
 ```
