@@ -190,7 +190,9 @@ Mmodbus = class Mmodbus {
       });
     });
     //  create Scan Groups here
-    MmodbusUtils.funcs.createScanGroups(MmodbusUtils.funcs.assignScanGroup(cleanCoils, this.options.groupOptions.coilReadLength, "Bit"));
+    if (cleanCoils.length !== 0) {
+      MmodbusUtils.funcs.createScanGroups(MmodbusUtils.funcs.assignScanGroup(cleanCoils, this.options.groupOptions.coilReadLength, "Bit"));
+    }
   }
   configureModbusHoldingRegisterCollections() {
     //  make two Scan Groups, one that hold integers and one that holds floating points.
@@ -225,8 +227,8 @@ Mmodbus = class Mmodbus {
       });
     });
     //  Create Scan Groups here
-    MmodbusUtils.funcs.createScanGroups(MmodbusUtils.funcs.assignScanGroup(cleanIntegers, this.options.groupOptions.holdingRegisterLength, "Integer"));
-    MmodbusUtils.funcs.createScanGroups(MmodbusUtils.funcs.assignScanGroup(cleanFloats, this.options.groupOptions.holdingRegisterLength, "Floating Point"));
+    cleanIntegers.length !== 0 ? MmodbusUtils.funcs.createScanGroups(MmodbusUtils.funcs.assignScanGroup(cleanIntegers, this.options.groupOptions.holdingRegisterLength, "Integer")) : 1;
+    cleanFloats.length !== 0 ? MmodbusUtils.funcs.createScanGroups(MmodbusUtils.funcs.assignScanGroup(cleanFloats, this.options.groupOptions.holdingRegisterLength, "Floating Point")) : 1;
   }
 
   startAllScanning() {
