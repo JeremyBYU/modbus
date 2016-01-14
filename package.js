@@ -19,9 +19,9 @@ Npm.depends({
 
 
 Package.onUse(function(api) {
-  api.versionsFrom('1.2.0.2');
+  api.versionsFrom('1.2.1');
 
-  api.use(['ecmascript', 'templating']);
+  api.use(['ecmascript@0.1.5']);
   api.use(['aldeed:collection2@2.5.0', 'mikowals:batch-insert@1.1.13']);
   api.use(['underscore', 'adriancbo:chalk'], 'server');
 
@@ -30,8 +30,7 @@ Package.onUse(function(api) {
   api.addFiles('lib/models/tag.js');
   api.addFiles('lib/global.js');
 
-  api.addFiles(['server/logging.js', 'server/utils.js', 'server/modbus.js'], 'server');
-  api.addFiles('client/util.js', 'client');
+  api.addFiles(['server/logging.js', 'server/utils.js', 'server/modbus.js', 'server/publications.js'], 'server');
 
   api.export('Mmodbus');
   api.export('MmodbusUtils');
