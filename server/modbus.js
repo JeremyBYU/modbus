@@ -150,6 +150,7 @@ Mmodbus = class Mmodbus {
           tagid: tag._id,
           tag_param: tagParam,
           description: tag.description,
+          dataType: param.dataType,
           modifiedAt: Date(),
           value: 0
         };
