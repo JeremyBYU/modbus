@@ -23,7 +23,7 @@ Package.onUse(function(api) {
 
   api.use(['ecmascript@0.1.5']);
   api.use(['aldeed:collection2@2.5.0', 'mikowals:batch-insert@1.1.13']);
-  api.use(['underscore', 'adriancbo:chalk'], 'server');
+  api.use(['underscore', 'adriancbo:chalk', 'okgrow:promise'], 'server');
 
   api.addFiles('lib/models/liveTags.js');
   api.addFiles('lib/models/scanGroups.js');

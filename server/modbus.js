@@ -408,55 +408,62 @@ Mmodbus = class Mmodbus {
     }
   }
   updateValue(tagParam, value) {
-    let self = this;
-    [tag, param, ...rest] = tagParam.split('_');
-    if (MmodbusUtils.funcs.isEmpty(tag) || MmodbusUtils.funcs.isEmpty(param)) {
-      return {
-        error: `${tagParam} is a malformed tag. Should be of form tag_param`,
-        success: false
-      };
-    }
-    self.logger.mmodbus_debug(`Tag : ${tag} Param: ${param} Rest: ${rest}`);
-    let tagObj = Tags.findOne({
-      tag: tag
-    });
-    if (tagObj === undefined) {
-      return {
-        error: `${tagParam} does not exist in database`,
-        success: false
-      };
-    }
-    paramObj = _.findWhere(tagObj.params, {
-      name: param
-    });
-    if (paramObj === undefined) {
-      return {
-        error: `Tag ${tag} is valid, but param ${param} is not valid for this tag`,
-        success: false
-      };
-    }
-    if (!MmodbusUtils.funcs.isNumeric(value)) {
-      return {
-        error: `Value: ${value} is not valid.  Must be a number`,
-        success: false
-      };
-    }
-    self.modbusWrite(tagParam, value, paramObj.table, paramObj.dataType, paramObj.address);
-    self.logger.mmodbus_debug(`tagObj.params: ${JSON.stringify(paramObj, null, 4)}`);
+    //  Attempting to use Promises
+    console.log('began Update Value')
+    let promise = new Promise((resolve) => {
+      let self = this;
+      let responseObject = {error: null, success: false};
+      [tag, param, ...rest] = tagParam.split('_');
+      if (MmodbusUtils.funcs.isEmpty(tag) || MmodbusUtils.funcs.isEmpty(param)) {
+        responseObject.error = `${tagParam} is a malformed tag. Should be of form tag_param`;
+        resolve(responseObject);
+        return;
+      }
+      self.logger.mmodbus_debug(`Tag : ${tag} Param: ${param} Rest: ${rest}`);
+      let tagObj = Tags.findOne({
+        tag: tag
+      });
+      if (tagObj === undefined) {
+        responseObject.error =  `${tagParam} does not exist in database`;
+        resolve(responseObject);
+        return;
+      }
+      paramObj = _.findWhere(tagObj.params, {
+        name: param
+      });
+      if (paramObj === undefined) {
+        responseObject.error = `Tag ${tag} is valid, but param ${param} is not valid for this tag`;
+        resolve(responseObject);
+        return;
+      }
+      if (!MmodbusUtils.funcs.isNumeric(value)) {
+        responseObject.error = `Value: ${value} is not valid.  Must be a number`;
+        resolve(responseObject);
+        return;
+      }
+      self.modbusWrite(tagParam, value, paramObj.table, paramObj.dataType, paramObj.address, resolve);
+      self.logger.mmodbus_debug(`tagObj.params: ${JSON.stringify(paramObj, null, 4)}`);
+    })
+
+    let futureValue = Promise.await(promise);
+    //  console.log('After Promise Await', futureValue)
+    return futureValue
+
+
   }
-  modbusWrite(tagParam, value, table, dataType, address) {
+  modbusWrite(tagParam, value, table, dataType, address, resolve) {
     if (table === 'Coil') {
-      this.modbusWriteBit(tagParam, value, table, address);
+      this.modbusWriteBit(tagParam, value, table, address, resolve);
     } else if (table === 'Holding Register') {
-      this.modbusWriteHoldingRegister(tagParam, value, dataType, address);
+      this.modbusWriteHoldingRegister(tagParam, value, dataType, address, resolve);
     } else {
-      return {
-        error: `Tag ${tagParam} does not have a valid Table`,
-        success: false
-      };
+      let responseObject = {error: null, success: false};
+      responseObject.error = `Value: ${value} is not valid.  Must be a number`;
+      resolve(responseObject);
+      return;
     }
   }
-  modbusWriteBit(tagParam, value, table, address) {
+  modbusWriteBit(tagParam, value, table, address, resolve) {
     let master = this.master;
     let self = this;
     let boolValue = (value === 0) ? false : true;
@@ -464,7 +471,7 @@ Mmodbus = class Mmodbus {
     master.writeSingleCoil(
       address, boolValue, {
         onComplete: function onWriteCoilValueComplete(err, res) {
-          self.handleWriteResponse(this, err, res, tagParam, boolValue);
+          self.handleWriteResponse(this, err, res, tagParam, boolValue, resolve);
         },
         onError: function(err) {
           self.logger.mmodbus_error(`[transaction#error] ${tagParam} failed write` + 'Err Msg: ' + err.message);
@@ -476,7 +483,7 @@ Mmodbus = class Mmodbus {
       }
     );
   }
-  modbusWriteHoldingRegister(tagParam, value, dataType, address) {
+  modbusWriteHoldingRegister(tagParam, value, dataType, address, resolve) {
     let self = this;
     let master = self.master;
     let valueBuffer;
@@ -488,7 +495,7 @@ Mmodbus = class Mmodbus {
     master.writeMultipleRegisters(
       address, valueBuffer, {
         onComplete: function onWriteRegisterValueComplete(err, res) {
-          self.handleWriteResponse(this, err, res, tagParam, value);
+          self.handleWriteResponse(this, err, res, tagParam, value, resolve);
         },
         onError: function(err) {
           self.logger.mmodbus_error(`[transaction#error] ${tagParam} failed` + 'Err Msg: ' + err.message);
@@ -500,16 +507,22 @@ Mmodbus = class Mmodbus {
       }
     );
   }
-  handleWriteResponse(transaction, err, res, tagParam, value) {
+  handleWriteResponse(transaction, err, res, tagParam, value, resolve) {
+    let responseObject = {error: null, success: false}
     if (err) {
+      responseObject.error = 'Modbus Error, check logs';
+      resolve(responseObject);
       this.logger.mmodbus_error(`Recieved error while writing to ${tagParam}.  Error: ${err}`);
       return;
     }
-
     if (res.isException()) {
+      responseObject.error = 'Modbus Exception, check logs';
+      resolve(responseObject);
       this.logger.mmodbus_error(`Recieved exception while writing to ${tagParam}.  Exception: ${res.toString()}`);
       return;
     }
+    responseObject.success = true;
+    resolve(responseObject);
     this.logger.mmodbus_debug(`Succesfully wrote value '${value}' to ${tagParam}`);
   }
 };
