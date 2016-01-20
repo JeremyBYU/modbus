@@ -158,7 +158,9 @@ Mmodbus = class Mmodbus {
         //  LiveTags.insert(new_livetag);
       });
     });
-    LiveTags.batchInsert(liveTagCollection);
+    if(liveTagCollection.length > 0) {
+      LiveTags.batchInsert(liveTagCollection);
+    }
     //  console.timeEnd('createAllLiveTags');
   }
 /**
@@ -409,7 +411,7 @@ Mmodbus = class Mmodbus {
   }
   updateValue(tagParam, value) {
     //  Attempting to use Promises
-    console.log('began Update Value')
+    //  console.log('began Update Value')
     let promise = new Promise((resolve) => {
       let self = this;
       let responseObject = {error: null, success: false};
@@ -521,8 +523,10 @@ Mmodbus = class Mmodbus {
       this.logger.mmodbus_error(`Recieved exception while writing to ${tagParam}.  Exception: ${res.toString()}`);
       return;
     }
+    //TODO Update Live Tag becasue we know that it worked?
     responseObject.success = true;
     resolve(responseObject);
     this.logger.mmodbus_debug(`Succesfully wrote value '${value}' to ${tagParam}`);
+    // Convert Boolean to Integer
   }
 };

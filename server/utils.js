@@ -4,7 +4,7 @@
 *
 */
 //  Required NPM Modules
-let SerialPort = Npm.require('serialPort');
+let SerialPort = Npm.require('serialport');
 let net = Npm.require('net');
 
 
