@@ -49,7 +49,7 @@ let createMasterConfiguration = (self) => {
     });
     transport.type = 'rtu';
     transport.eofTimeout = 10;
-    transport.connection = { type: self.options.rtu.type, serialPort: serialPort};
+    transport.connection = { type: self.options.rtu.rtype, serialPort: serialPort};
   }
   let masterConfig = _.extend({}, self.options.scanOptions, {transport: transport});
   return masterConfig;

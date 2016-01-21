@@ -19,7 +19,7 @@ Mmodbus = class Mmodbus {
       supressTransationErrors = true, retryOnException = false, maxConcurrentRequests = 1, defaultUnit = 1, defaultMaxRetries = 1, defaultTimeout = 1000
     } = {},
     rtu: {
-      serialPort = '/dev/ttyACM0', baudRate = 9600, type = 'serial'
+      serialPort = '/dev/ttyACM0', baudRate = 9600, rtype = 'serial'
     } = {},
     ip: {
       type = 'tcp', host = '127.0.0.1', port = 502, autoConnect = true, autoReconnect = true, minConnectTime = 2500, maxReconnectTime = 5000 // eslint-disable-line
@@ -37,7 +37,7 @@ Mmodbus = class Mmodbus {
       supressTransationErrors, retryOnException, maxConcurrentRequests, defaultUnit, defaultMaxRetries, defaultTimeout
     };
     this.options.rtu = {
-      serialPort, baudRate, type
+      serialPort, baudRate, rtype
     };
     this.options.ip = {
       type, host, port, autoConnect, autoReconnect, minConnectTime, maxReconnectTime
@@ -70,6 +70,7 @@ Mmodbus = class Mmodbus {
     let self = this;
     let masterConfig = MmodbusUtils.funcs.createMasterConfiguration(self);
     //  console.log(masterConfig);
+    console.log(masterConfig)
     self.master = modbus.createMaster(masterConfig);
 
     //  Generate basic event handling for master connections
@@ -88,6 +89,7 @@ Mmodbus = class Mmodbus {
     let self = this;
     MmodbusUtils.funcs.syncMasterOn(self, 'error', (err) => {
       self.logger.mmodbus_error('[master#error] %s', err.message);
+      self.logger.mmodbus_error('[master#error] %s', err);
       self.stopAllScanning();
     });
     MmodbusUtils.funcs.syncMasterOn(self, 'disconnected', () => {
