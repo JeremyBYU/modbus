@@ -43,7 +43,8 @@ let createMasterConfiguration = (self) => {
     transport.connection = _.extend({}, self.options.ip, {socket: socket});
     //  console.log(transport);
   } else {
-    let serialPort = new SerialPort(self.options.rtu.serialPort, {
+    let SerialPortMaker = SerialPort.SerialPort;
+    let serialPort = new SerialPortMaker(self.options.rtu.serialPort, {
       baudRate: self.options.rtu.baudRate
     });
     transport.type = 'rtu';
